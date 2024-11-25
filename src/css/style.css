@@ -24,8 +24,6 @@ input,
 select {
     margin-bottom: 20px;
     width: 100%;
-    min-height: 100px;
-    /* Added this line to increase the height of the dropdown */
 }
 
 button {

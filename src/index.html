@@ -41,11 +41,11 @@
                 </div>
                 <div>
                     <label for="userRoles">User Roles to Manage:</label>
-                    <select id="userRoles" multiple></select>
+                    <select id="userRoles" multiple data-searchable="true"></select>
                 </div>
                 <div>
                     <label for="additionalAuthorities">Additional Authorities:</label>
-                    <select id="additionalAuthorities" multiple></select>
+                    <select id="additionalAuthorities" multiple data-searchable="true"></select>
                 </div>
                 <button id="createRoleBtn" onclick="createNewUserRole()">Create Role</button>
             </div>
@@ -54,16 +54,16 @@
                 <h5>Validate and Modify Existing User Admin Role</h5>
                 <div>
                     <label for="existingRoles">Existing Admin Role:</label>
-                    <select id="existingRoles"></select>
+                    <select id="existingRoles" data-searchable="true"></select>
                 </div>
                 <div>
                     <button id="validateRoleBtn" onclick="validateUserRole()">Validate Role</button>
                 </div>
-                <div id="validationResults">
+                <div id="validationResults" style="display: none;">
                     <h6>User Roles Managed:</h6>
                     <ul id="managedRolesList"></ul>
                     <label for="modifyRoles">Modify Managed Roles:</label>
-                    <select id="modifyRoles" multiple></select>
+                    <select id="modifyRoles" multiple data-searchable="true"></select>
                     <button id="modifyRoleBtn" onclick="modifyUserRole()">Modify Role</button>
                 </div>
             </div>

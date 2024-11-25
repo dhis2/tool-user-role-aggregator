@@ -1,7 +1,8 @@
 "use strict";
 
 import "materialize-css";
-import M from "materialize-css";
+import Choices from "choices.js";
+import "choices.js/public/assets/styles/choices.min.css";
 
 //JS
 import { d2Get, d2PostJson, d2PutJson } from "./js/d2api.js";
@@ -10,80 +11,85 @@ import { d2Get, d2PostJson, d2PutJson } from "./js/d2api.js";
 import "./css/header.css";
 import "./css/style.css";
 
+// Initialize Choices.js instances globally
+let userRolesSelectInstance;
+let additionalAuthoritiesSelectInstance;
+let existingRolesSelectInstance;
+let modifyRolesSelectInstance;
 
-// Initialize Materialize components
+// Initialize Choices.js components with search functionality
 document.addEventListener('DOMContentLoaded', () => {
-    const elems = document.querySelectorAll('select');
-    M.FormSelect.init(elems);
+    // Initialize Choices.js instances
+    userRolesSelectInstance = new Choices('#userRoles', {
+        removeItemButton: true,
+        searchEnabled: true,
+        itemSelectText: '',
+    });
 
-    // Fetch user roles and authorities onload
-    populateUserRoles();
-    populateAuthorities();
-    populateExistingRoles();
+    additionalAuthoritiesSelectInstance = new Choices('#additionalAuthorities', {
+        removeItemButton: true,
+        searchEnabled: true,
+        itemSelectText: '',
+    });
+
+    existingRolesSelectInstance = new Choices('#existingRoles', {
+        searchEnabled: true,
+        itemSelectText: '',
+    });
+
+    modifyRolesSelectInstance = new Choices('#modifyRoles', {
+        removeItemButton: true,
+        searchEnabled: true,
+        itemSelectText: '',
+    });
+
+
+    // Fetch user roles and authorities on load
+    populateUserRoles(userRolesSelectInstance);
+    populateAuthorities(additionalAuthoritiesSelectInstance);
+    populateExistingRoles(existingRolesSelectInstance);
+
 });
 
-
-async function populateUserRoles() {
+async function populateUserRoles(choicesInstance) {
     try {
-        const response = await d2Get("/api/userRoles");
+        const response = await d2Get("/api/userRoles?paging=false");
         const userRoles = response.userRoles;
-        const userRolesSelect = document.getElementById("userRoles");
-        userRolesSelect.innerHTML = userRoles.map(role => `<option value="${role.id}">${role.displayName}</option>`).join('');
-        M.FormSelect.init(userRolesSelect);
+        const userRolesOptions = userRoles.map(role => ({ value: role.id, label: role.displayName }));
+        choicesInstance.clearStore(); // Clear existing choices
+        choicesInstance.setChoices(userRolesOptions, 'value', 'label', true);
     } catch (error) {
         console.error("Failed to fetch user roles", error);
     }
 }
 
 
-
-
-async function populateAuthorities() {
+async function populateAuthorities(choicesInstance) {
     try {
         const response = await d2Get("/api/authorities");
         const authorities = response.systemAuthorities;
-        const additionalAuthoritiesSelect = document.getElementById("additionalAuthorities");
-        additionalAuthoritiesSelect.innerHTML = authorities.map(auth => `<option value="${auth.id}">${auth.name}</option>`).join('');
-        M.FormSelect.init(additionalAuthoritiesSelect);
+        const authoritiesOptions = authorities.map(auth => ({ value: auth.id, label: auth.name }));
+        choicesInstance.clearStore(); // Clear existing choices
+        choicesInstance.setChoices(authoritiesOptions, 'value', 'label', true);
     } catch (error) {
         console.error("Failed to fetch authorities", error);
     }
 }
 
 
-
-
-
-
-
-async function populateExistingRoles() {
+async function populateExistingRoles(choicesInstance) {
     try {
-        const response = await d2Get("/api/userRoles");
+        const response = await d2Get("/api/userRoles?paging=false");
         const userRoles = response.userRoles;
-        const existingRolesSelect = document.getElementById("existingRoles");
-        existingRolesSelect.innerHTML = userRoles.map(role => `<option value="${role.id}">${role.displayName}</option>`).join('');
-        M.FormSelect.init(existingRolesSelect);
+        const userRolesOptions = userRoles.map(role => ({ value: role.id, label: role.displayName }));
+        choicesInstance.clearStore(); // Clear existing choices
+        choicesInstance.setChoices(userRolesOptions, 'value', 'label', true);
     } catch (error) {
         console.error("Failed to fetch existing roles", error);
     }
 }
 
 
-function createCheckboxList(items, namePrefix) {
-    if (!Array.isArray(items)) {
-        return '';
-    }
-    return items.map((item, idx) => `
-        <label>
-            <input type="checkbox" class="filled-in" id="${namePrefix}_${idx}" value="${item.id || item}">
-            <span>${item.displayName || item}</span>
-        </label>
-    `).join('');
-}
-
-
-
-// Function to create a new user role
 window.createNewUserRole = async function () {
     const roleName = document.getElementById("newRoleName").value;
     const selectedUserRoles = Array.from(document.getElementById("userRoles").selectedOptions).map(option => option.value);
@@ -113,38 +119,26 @@ window.createNewUserRole = async function () {
     }
 };
 
-
-
-
-
-
 // Function to validate and modify an existing user role
 window.validateUserRole = async function () {
     const existingRoleId = document.getElementById("existingRoles").value;
 
     try {
-        // Fetch the full details of the existing user role being validated
         const validatedRole = await d2Get(`/api/userRoles/${existingRoleId}?fields=:owner`);
         const validatedRoleAuthorities = new Set(validatedRole.authorities);
 
-        // Fetch all user roles to compare against
         const allRolesResponse = await d2Get("/api/userRoles?fields=:owner&paging=false");
         const allRoles = allRolesResponse.userRoles;
 
-        // Find the roles that can be managed by the validated role based on its authorities
         const manageableRoles = allRoles.filter(role => {
-            if (role.id === existingRoleId) return false; // Exclude the role itself
-
-            // Check if role.authorities exists and ensure the validated role's authorities are a superset of the role's authorities
+            if (role.id === existingRoleId) return false;
             if (!role.authorities) return false;
             return role.authorities.every(auth => validatedRoleAuthorities.has(auth));
         });
 
-        // Populate the managed roles list with the names of the manageable roles
         const managedRoleNames = manageableRoles.map(role => role.name);
         const managedRoleIds = manageableRoles.map(role => role.id);
 
-        // Populate the managed roles and exclude self-reference from modify roles selection
         populateManagedRoles(managedRoleNames);
         populateModifyRolesSelect(allRoles, managedRoleIds.concat(existingRoleId));
 
@@ -155,26 +149,16 @@ window.validateUserRole = async function () {
 };
 
 
-
-
-
 async function populateManagedRoles(managedRoleNames) {
     const managedRolesList = document.getElementById("managedRolesList");
     managedRolesList.innerHTML = managedRoleNames.map(roleName => `<li>${roleName}</li>`).join('');
 }
 
-
-
 async function populateModifyRolesSelect(allRoles, excludeRoleIds) {
-    const modifyRolesSelect = document.getElementById("modifyRoles");
     const selectableRoles = allRoles.filter(role => !excludeRoleIds.includes(role.id));
-    
-    modifyRolesSelect.innerHTML = selectableRoles.map(role => `<option value="${role.id}">${role.name}</option>`).join('');
-    M.FormSelect.init(modifyRolesSelect);
+    modifyRolesSelectInstance.clearChoices(); // Clear existing choices
+    modifyRolesSelectInstance.setChoices(selectableRoles.map(role => ({ value: role.id, label: role.name })), 'value', 'label', true);
 }
-
-
-
 
 
 
@@ -204,5 +188,3 @@ window.modifyUserRole = async function () {
         alert("Failed to modify user role. Check console for details.");
     }
 };
-
-
