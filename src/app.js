@@ -1,7 +1,7 @@
 "use strict";
 
 import "materialize-css/dist/css/materialize.min.css";
-import "materialize-css";
+import M from "materialize-css";
 import Choices from "choices.js";
 import "choices.js/public/assets/styles/choices.min.css";
 
@@ -22,33 +22,33 @@ const defaultAuthorities = ["F_USER_ADD", "F_USER_DELETE", "M_dhis-web-user", "F
 
 
 // Initialize Choices.js components with search functionality
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     // Initialize Materialize tabs
-    const elems = document.querySelectorAll('.tabs');
+    const elems = document.querySelectorAll(".tabs");
     M.Tabs.init(elems);
 
     // Initialize Choices.js instances
-    userRolesSelectInstance = new Choices('#userRoles', {
+    userRolesSelectInstance = new Choices("#userRoles", {
         removeItemButton: true,
         searchEnabled: true,
-        itemSelectText: '',
+        itemSelectText: "",
     });
 
-    additionalAuthoritiesSelectInstance = new Choices('#additionalAuthorities', {
+    additionalAuthoritiesSelectInstance = new Choices("#additionalAuthorities", {
         removeItemButton: true,
         searchEnabled: true,
-        itemSelectText: '',
+        itemSelectText: "",
     });
 
-    existingRolesSelectInstance = new Choices('#existingRoles', {
+    existingRolesSelectInstance = new Choices("#existingRoles", {
         searchEnabled: true,
-        itemSelectText: '',
+        itemSelectText: "",
     });
 
-    modifyRolesSelectInstance = new Choices('#modifyRoles', {
+    modifyRolesSelectInstance = new Choices("#modifyRoles", {
         removeItemButton: true,
         searchEnabled: true,
-        itemSelectText: '',
+        itemSelectText: "",
     });
 
     // Fetch user roles and authorities on load
@@ -64,7 +64,7 @@ async function populateUserRoles(choicesInstance) {
         const userRoles = response.userRoles;
         const userRolesOptions = userRoles.map(role => ({ value: role.id, label: role.displayName }));
         choicesInstance.clearStore(); // Clear existing choices
-        choicesInstance.setChoices(userRolesOptions, 'value', 'label', true);
+        choicesInstance.setChoices(userRolesOptions, "value", "label", true);
     } catch (error) {
         console.error("Failed to fetch user roles", error);
     }
@@ -84,7 +84,7 @@ async function populateAuthorities(choicesInstance) {
         }));
 
         choicesInstance.clearChoices(); // Clear existing choices
-        choicesInstance.setChoices(authoritiesOptions, 'value', 'label', true);
+        choicesInstance.setChoices(authoritiesOptions, "value", "label", true);
     } catch (error) {
         console.error("Failed to fetch authorities", error);
     }
@@ -98,7 +98,7 @@ async function populateExistingRoles(choicesInstance) {
         const userRoles = response.userRoles;
         const userRolesOptions = userRoles.map(role => ({ value: role.id, label: role.displayName }));
         choicesInstance.clearStore(); // Clear existing choices
-        choicesInstance.setChoices(userRolesOptions, 'value', 'label', true);
+        choicesInstance.setChoices(userRolesOptions, "value", "label", true);
     } catch (error) {
         console.error("Failed to fetch existing roles", error);
     }
@@ -122,7 +122,7 @@ window.createNewUserRole = async function () {
 
         const newRole = {
             name: roleName,
-            description: `Admin role for managing users with roles: ${selectedUserRoles.join(', ')}`,
+            description: `Admin role for managing users with roles: ${selectedUserRoles.join(", ")}`,
             authorities: Array.from(aggregatedAuthorities)
         };
 
@@ -166,13 +166,13 @@ window.validateUserRole = async function () {
 
 async function populateManagedRoles(managedRoleNames) {
     const managedRolesList = document.getElementById("managedRolesList");
-    managedRolesList.innerHTML = managedRoleNames.map(roleName => `<li>${roleName}</li>`).join('');
+    managedRolesList.innerHTML = managedRoleNames.map(roleName => `<li>${roleName}</li>`).join("");
 }
 
 async function populateModifyRolesSelect(allRoles, excludeRoleIds) {
     const selectableRoles = allRoles.filter(role => !excludeRoleIds.includes(role.id));
     modifyRolesSelectInstance.clearChoices(); // Clear existing choices
-    modifyRolesSelectInstance.setChoices(selectableRoles.map(role => ({ value: role.id, label: role.name })), 'value', 'label', true);
+    modifyRolesSelectInstance.setChoices(selectableRoles.map(role => ({ value: role.id, label: role.name })), "value", "label", true);
 }
 
 
