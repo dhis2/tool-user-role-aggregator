@@ -123,9 +123,31 @@ window.validateUserRole = async function () {
     const existingRoleId = document.getElementById("existingRoles").value;
 
     try {
-        const response = await d2Get(`/api/userRoles/${existingRoleId}?fields=:owner`);
-        const existingRole = response;
-        populateManagedRoles(existingRole.authorities);
+        // Fetch the full details of the existing user role being validated
+        const validatedRole = await d2Get(`/api/userRoles/${existingRoleId}?fields=:owner`);
+        const validatedRoleAuthorities = new Set(validatedRole.authorities);
+
+        // Fetch all user roles to compare against
+        const allRolesResponse = await d2Get("/api/userRoles?fields=:owner&paging=false");
+        const allRoles = allRolesResponse.userRoles;
+
+        // Find the roles that can be managed by the validated role based on its authorities
+        const manageableRoles = allRoles.filter(role => {
+            if (role.id === existingRoleId) return false; // Exclude the role itself
+
+            // Check if role.authorities exists and ensure the validated role's authorities are a superset of the role's authorities
+            if (!role.authorities) return false;
+            return role.authorities.every(auth => validatedRoleAuthorities.has(auth));
+        });
+
+        // Populate the managed roles list with the names of the manageable roles
+        const managedRoleNames = manageableRoles.map(role => role.name);
+        const managedRoleIds = manageableRoles.map(role => role.id);
+
+        // Populate the managed roles and exclude self-reference from modify roles selection
+        populateManagedRoles(managedRoleNames);
+        populateModifyRolesSelect(allRoles, managedRoleIds.concat(existingRoleId));
+
         document.getElementById("validationResults").style.display = "block";
     } catch (error) {
         console.error("Failed to validate user role", error);
@@ -133,20 +155,26 @@ window.validateUserRole = async function () {
 };
 
 
-async function populateManagedRoles(authorities) {
-    const managedRolesList = document.getElementById("managedRolesList");
-    managedRolesList.innerHTML = authorities.map(auth => `<li>${auth}</li>`).join('');
 
-    const modifyRolesSelect = document.getElementById("modifyRoles");
-    try {
-        const response = await d2Get("/api/userRoles");
-        const userRoles = response.userRoles;
-        modifyRolesSelect.innerHTML = userRoles.map(role => `<option value="${role.id}">${role.displayName}</option>`).join('');
-        M.FormSelect.init(modifyRolesSelect);
-    } catch (error) {
-        console.error("Failed to fetch user roles for modification", error);
-    }
+
+
+async function populateManagedRoles(managedRoleNames) {
+    const managedRolesList = document.getElementById("managedRolesList");
+    managedRolesList.innerHTML = managedRoleNames.map(roleName => `<li>${roleName}</li>`).join('');
 }
+
+
+
+async function populateModifyRolesSelect(allRoles, excludeRoleIds) {
+    const modifyRolesSelect = document.getElementById("modifyRoles");
+    const selectableRoles = allRoles.filter(role => !excludeRoleIds.includes(role.id));
+    
+    modifyRolesSelect.innerHTML = selectableRoles.map(role => `<option value="${role.id}">${role.name}</option>`).join('');
+    M.FormSelect.init(modifyRolesSelect);
+}
+
+
+
 
 
 
