@@ -31,9 +31,43 @@
     </div>
 
     <div class="mainView">
-        <p>Content goes here...</p>
+        <div class="container">
+            <h2>User Role Aggregator</h2>
+            <div>
+                <h5>Create New User Admin Role</h5>
+                <div>
+                    <label for="newRoleName">Role Name:</label>
+                    <input type="text" id="newRoleName" placeholder="Enter new role name">
+                </div>
+                <div>
+                    <label for="userRoles">User Roles to Manage:</label>
+                    <select id="userRoles" multiple></select>
+                </div>
+                <div>
+                    <label for="additionalAuthorities">Additional Authorities:</label>
+                    <select id="additionalAuthorities" multiple></select>
+                </div>
+                <button id="createRoleBtn" onclick="createNewUserRole()">Create Role</button>
+            </div>
 
-        <button onclick="helloWorld()">Hello</button>
+            <div>
+                <h5>Validate and Modify Existing User Admin Role</h5>
+                <div>
+                    <label for="existingRoles">Existing Admin Role:</label>
+                    <select id="existingRoles"></select>
+                </div>
+                <div>
+                    <button id="validateRoleBtn" onclick="validateUserRole()">Validate Role</button>
+                </div>
+                <div id="validationResults">
+                    <h6>User Roles Managed:</h6>
+                    <ul id="managedRolesList"></ul>
+                    <label for="modifyRoles">Modify Managed Roles:</label>
+                    <select id="modifyRoles" multiple></select>
+                    <button id="modifyRoleBtn" onclick="modifyUserRole()">Modify Role</button>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 

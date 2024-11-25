@@ -3,18 +3,21 @@
   "description": "Template for basic DHIS2 webapps",
   "version": "0.1.0",
   "dependencies": {
-    "jquery": "^3.7.1"
+    "axios": "^1.7.7",
+    "jquery": "^3.7.1",
+    "material-design-icons": "^3.0.1",
+    "materialize-css": "^1.0.0"
   },
   "devDependencies": {
     "@dhis2/cli-style": "github:dhis2/cli-style",
+    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/js": "^9.15.0",
     "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^7.1.2",
     "d2-manifest": "^1.0.0",
     "eslint": "^9.15.0",
-    "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.15.0",
-    "globals": "^15.12.0",
     "file-loader": "^6.2.0",
+    "globals": "^15.12.0",
     "html-loader": "^5.1.0",
     "html-webpack-plugin": "^5.6.3",
     "style-loader": "^4.0.0",
