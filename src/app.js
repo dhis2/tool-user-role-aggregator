@@ -1,5 +1,6 @@
 "use strict";
 
+import "materialize-css/dist/css/materialize.min.css";
 import "materialize-css";
 import Choices from "choices.js";
 import "choices.js/public/assets/styles/choices.min.css";
@@ -22,6 +23,10 @@ const defaultAuthorities = ["F_USER_ADD", "F_USER_DELETE", "M_dhis-web-user", "F
 
 // Initialize Choices.js components with search functionality
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Materialize tabs
+    const elems = document.querySelectorAll('.tabs');
+    M.Tabs.init(elems);
+
     // Initialize Choices.js instances
     userRolesSelectInstance = new Choices('#userRoles', {
         removeItemButton: true,
@@ -46,13 +51,12 @@ document.addEventListener('DOMContentLoaded', () => {
         itemSelectText: '',
     });
 
-
     // Fetch user roles and authorities on load
     populateUserRoles(userRolesSelectInstance);
     populateAuthorities(additionalAuthoritiesSelectInstance);
     populateExistingRoles(existingRolesSelectInstance);
-
 });
+
 
 async function populateUserRoles(choicesInstance) {
     try {
