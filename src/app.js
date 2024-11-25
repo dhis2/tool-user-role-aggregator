@@ -17,6 +17,9 @@ let additionalAuthoritiesSelectInstance;
 let existingRolesSelectInstance;
 let modifyRolesSelectInstance;
 
+const defaultAuthorities = ["F_USER_ADD", "F_USER_DELETE", "M_dhis-web-user", "F_USER_VIEW"];
+
+
 // Initialize Choices.js components with search functionality
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize Choices.js instances
@@ -68,13 +71,21 @@ async function populateAuthorities(choicesInstance) {
     try {
         const response = await d2Get("/api/authorities");
         const authorities = response.systemAuthorities;
-        const authoritiesOptions = authorities.map(auth => ({ value: auth.id, label: auth.name }));
-        choicesInstance.clearStore(); // Clear existing choices
+
+        // Map authorities returning 'selected' flag for the defaultAuthorities
+        const authoritiesOptions = authorities.map(auth => ({
+            value: auth.id,
+            label: auth.name,
+            selected: defaultAuthorities.includes(auth.id)
+        }));
+
+        choicesInstance.clearChoices(); // Clear existing choices
         choicesInstance.setChoices(authoritiesOptions, 'value', 'label', true);
     } catch (error) {
         console.error("Failed to fetch authorities", error);
     }
 }
+
 
 
 async function populateExistingRoles(choicesInstance) {
