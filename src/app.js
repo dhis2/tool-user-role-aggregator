@@ -90,9 +90,11 @@ window.createNewUserRole = async function () {
     const selectedAuthorities = Array.from(document.getElementById("additionalAuthorities").selectedOptions).map(option => option.value);
 
     try {
-        const rolesToManage = await Promise.all(selectedUserRoles.map(id => d2Get(`/api/userRoles/${id}`)));
+        // Fetch full details of each selected user role to manage
+        const rolesToManage = await Promise.all(selectedUserRoles.map(id => d2Get(`/api/userRoles/${id}?fields=:owner`)));
         const aggregatedAuthorities = new Set(selectedAuthorities);
 
+        // Aggregate authorities from the roles to manage
         rolesToManage.forEach(role => {
             role.authorities.forEach(auth => aggregatedAuthorities.add(auth));
         });
@@ -110,6 +112,7 @@ window.createNewUserRole = async function () {
         alert("Failed to create user role. Check console for details.");
     }
 };
+
 
 
 
@@ -152,10 +155,11 @@ window.modifyUserRole = async function () {
     const modifiedRoles = Array.from(document.getElementById("modifyRoles").selectedOptions).map(option => option.value);
 
     try {
-        const role = await d2Get(`/api/userRoles/${existingRoleId}`);
+        const role = await d2Get(`/api/userRoles/${existingRoleId}?fields=:owner`);
         const aggregatedAuthorities = new Set(role.authorities);
 
-        const rolesToManage = await Promise.all(modifiedRoles.map(id => d2Get(`/api/userRoles/${id}`)));
+        // Fetch full details of each modified role to manage
+        const rolesToManage = await Promise.all(modifiedRoles.map(id => d2Get(`/api/userRoles/${id}?fields=:owner`)));
         rolesToManage.forEach(role => {
             role.authorities.forEach(auth => aggregatedAuthorities.add(auth));
         });
@@ -172,4 +176,5 @@ window.modifyUserRole = async function () {
         alert("Failed to modify user role. Check console for details.");
     }
 };
+
 
