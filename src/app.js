@@ -20,8 +20,11 @@ let modifyRolesSelectInstance;
 
 const defaultAuthorities = ["F_USER_ADD", "F_USER_DELETE", "M_dhis-web-user", "F_USER_VIEW"];
 
+function showToast(message, success = true) {
+    M.toast({ html: message, classes: success ? "green" : "red" });
+}
 
-// Initialize Choices.js components with search functionality
+
 document.addEventListener("DOMContentLoaded", () => {
     // Initialize Materialize tabs
     const elems = document.querySelectorAll(".tabs");
@@ -32,23 +35,31 @@ document.addEventListener("DOMContentLoaded", () => {
         removeItemButton: true,
         searchEnabled: true,
         itemSelectText: "",
+        shouldSort: false,
+        dropdownPosition: "auto"
     });
 
     additionalAuthoritiesSelectInstance = new Choices("#additionalAuthorities", {
         removeItemButton: true,
         searchEnabled: true,
         itemSelectText: "",
+        shouldSort: false,
+        dropdownPosition: "auto"
     });
 
     existingRolesSelectInstance = new Choices("#existingRoles", {
         searchEnabled: true,
         itemSelectText: "",
+        shouldSort: false,
+        dropdownPosition: "auto"
     });
 
     modifyRolesSelectInstance = new Choices("#modifyRoles", {
         removeItemButton: true,
         searchEnabled: true,
         itemSelectText: "",
+        shouldSort: false,
+        dropdownPosition: "auto"
     });
 
     // Fetch user roles and authorities on load
@@ -56,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     populateAuthorities(additionalAuthoritiesSelectInstance);
     populateExistingRoles(existingRolesSelectInstance);
 });
+
 
 
 async function populateUserRoles(choicesInstance) {
@@ -67,8 +79,10 @@ async function populateUserRoles(choicesInstance) {
         choicesInstance.setChoices(userRolesOptions, "value", "label", true);
     } catch (error) {
         console.error("Failed to fetch user roles", error);
+        showToast("Failed to fetch user roles", false);
     }
 }
+
 
 
 async function populateAuthorities(choicesInstance) {
@@ -101,8 +115,10 @@ async function populateExistingRoles(choicesInstance) {
         choicesInstance.setChoices(userRolesOptions, "value", "label", true);
     } catch (error) {
         console.error("Failed to fetch existing roles", error);
+        showToast("Failed to fetch existing roles", false);
     }
 }
+
 
 
 window.createNewUserRole = async function () {
@@ -111,11 +127,9 @@ window.createNewUserRole = async function () {
     const selectedAuthorities = Array.from(document.getElementById("additionalAuthorities").selectedOptions).map(option => option.value);
 
     try {
-        // Fetch full details of each selected user role to manage
         const rolesToManage = await Promise.all(selectedUserRoles.map(id => d2Get(`/api/userRoles/${id}?fields=:owner`)));
         const aggregatedAuthorities = new Set(selectedAuthorities);
 
-        // Aggregate authorities from the roles to manage
         rolesToManage.forEach(role => {
             role.authorities.forEach(auth => aggregatedAuthorities.add(auth));
         });
@@ -127,12 +141,13 @@ window.createNewUserRole = async function () {
         };
 
         await d2PostJson("/api/userRoles", newRole);
-        alert("User role created successfully!");
+        showToast("User role created successfully!");
     } catch (error) {
         console.error("Failed to create user role", error);
-        alert("Failed to create user role. Check console for details.");
+        showToast("Failed to create user role. Check console for details.", false);
     }
 };
+
 
 // Function to validate and modify an existing user role
 window.validateUserRole = async function () {
@@ -160,8 +175,10 @@ window.validateUserRole = async function () {
         document.getElementById("validationResults").style.display = "block";
     } catch (error) {
         console.error("Failed to validate user role", error);
+        showToast("Failed to validate user role. Check console for details.", false);
     }
 };
+
 
 
 async function populateManagedRoles(managedRoleNames) {
@@ -185,7 +202,6 @@ window.modifyUserRole = async function () {
         const role = await d2Get(`/api/userRoles/${existingRoleId}?fields=:owner`);
         const aggregatedAuthorities = new Set(role.authorities);
 
-        // Fetch full details of each modified role to manage
         const rolesToManage = await Promise.all(modifiedRoles.map(id => d2Get(`/api/userRoles/${id}?fields=:owner`)));
         rolesToManage.forEach(role => {
             role.authorities.forEach(auth => aggregatedAuthorities.add(auth));
@@ -197,9 +213,10 @@ window.modifyUserRole = async function () {
         };
 
         await d2PutJson(`/api/userRoles/${existingRoleId}`, updatedRole);
-        alert("User role updated successfully!");
+        showToast("User role updated successfully!");
     } catch (error) {
         console.error("Failed to modify user role", error);
-        alert("Failed to modify user role. Check console for details.");
+        showToast("Failed to modify user role. Check console for details.", false);
     }
 };
+

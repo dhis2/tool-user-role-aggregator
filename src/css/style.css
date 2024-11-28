@@ -20,12 +20,11 @@ h5 {
     margin-top: 30px;
 }
 
-input,
-select {
+input, select {
     margin-bottom: 20px;
     width: 100%;
 }
 
-button {
-    margin-top: 20px;
+button, .btn {
+    z-index: 0;
 }
