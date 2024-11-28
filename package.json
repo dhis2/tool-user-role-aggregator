@@ -1,6 +1,6 @@
 {
-  "name": "dhis2_webapp_template",
-  "description": "Template for basic DHIS2 webapps",
+  "name": "tool_user_role_aggregator",
+  "description": "Tool to validate and create/modfify user roles for users who should manage other users.",
   "version": "0.1.0",
   "dependencies": {
     "axios": "^1.7.7",
@@ -47,7 +47,7 @@
       "48": "img/icons/app_logo_48x48.png",
       "96": "img/icons/app_logo_96x96.png"
     },
-    "name": "DHIS2 Skeleton App for Dummies",
+    "name": "User Role Aggregator Tool",
     "version": "0.1.0",
     "appType": "APP"
   }
