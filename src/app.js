@@ -1,5 +1,4 @@
 "use strict";
-
 import "materialize-css/dist/css/materialize.min.css";
 import M from "materialize-css";
 import Choices from "choices.js";
