@@ -2,8 +2,12 @@
 @import "material-design-icons/iconfont/material-icons.css";
 
 body {
-    font-family: Arial, sans-serif;
-    padding: 20px;
+    font-family: sans-serif;
+    margin: 0px;
+}
+
+#mainView {
+    margin: 8px;
 }
 
 .container {

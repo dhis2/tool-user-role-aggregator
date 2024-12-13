@@ -1,15 +1,14 @@
 "use strict";
-import "materialize-css/dist/css/materialize.min.css";
-import M from "materialize-css";
-import Choices from "choices.js";
-import "choices.js/public/assets/styles/choices.min.css";
 
 //JS
 import { d2Get, d2PostJson, d2PutJson } from "./js/d2api.js";
+import Choices from "choices.js";
+import M from "materialize-css";
 
 //CSS
-import "./css/header.css";
 import "./css/style.css";
+import "materialize-css/dist/css/materialize.min.css";
+import "choices.js/public/assets/styles/choices.min.css";
 
 // Initialize Choices.js instances globally
 let userRolesSelectInstance;
