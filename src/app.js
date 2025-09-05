@@ -2,6 +2,8 @@
 
 //JS
 import { d2Get, d2PostJson, d2PutJson } from "./js/d2api.js";
+import { loadLegacyHeaderBarIfNeeded } from "./js/check-header-bar.js";
+
 import Choices from "choices.js";
 import M from "materialize-css";
 
@@ -24,6 +26,36 @@ function showToast(message, success = true) {
 
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Check user authorities for create/update permissions
+    (async () => {
+        try {
+            const me = await d2Get("/api/me.json?fields=authorities");
+            const myAuthorities = new Set(me.authorities || []);
+            const canCreateOrUpdate = myAuthorities.has("F_USERROLE_PRIVATE_ADD") || myAuthorities.has("F_USERROLE_PUBLIC_ADD");
+            if (!canCreateOrUpdate) {
+                // Show warning
+                let container = document.querySelector("#create-new");
+                if (container) {
+                    let warning = document.createElement("div");
+                    warning.style.color = "#b71c1c";
+                    warning.style.background = "#ffebee";
+                    warning.style.padding = "12px";
+                    warning.style.marginBottom = "16px";
+                    warning.style.borderRadius = "4px";
+                    warning.innerHTML = "<b>Warning:</b> You do not have permission to create or update user roles.";
+                    container.insertBefore(warning, container.firstChild);
+                }
+                // Disable create and update buttons
+                const createBtn = document.getElementById("createRoleBtn");
+                if (createBtn) createBtn.disabled = true;
+                const modifyBtn = document.getElementById("modifyRoleBtn");
+                if (modifyBtn) modifyBtn.disabled = true;
+            }
+        } catch (e) {
+            // If error, do nothing (fail open)
+            console.log(e);
+        }
+    })();
     // Initialize Materialize tabs
     const elems = document.querySelectorAll(".tabs");
     M.Tabs.init(elems);
@@ -70,9 +102,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function populateUserRoles(choicesInstance) {
     try {
-        const response = await d2Get("/api/userRoles?paging=false");
+        // Fetch current user's authorities
+        const me = await d2Get("/api/me.json?fields=authorities");
+        const myAuthorities = new Set(me.authorities || []);
+
+        // Fetch all user roles
+        const response = await d2Get("/api/userRoles?fields=id,displayName,authorities&paging=false");
         const userRoles = response.userRoles;
-        const userRolesOptions = userRoles.map(role => ({ value: role.id, label: role.displayName }));
+
+        let filteredRoles;
+        if (myAuthorities.has("ALL")) {
+            filteredRoles = userRoles;
+        } else {
+            // Only include roles where all authorities are a subset of the user's authorities
+            filteredRoles = userRoles.filter(role => {
+                if (!role.authorities) return false;
+                return role.authorities.every(auth => myAuthorities.has(auth));
+            });
+        }
+
+        const userRolesOptions = filteredRoles.map(role => ({ value: role.id, label: role.displayName }));
         choicesInstance.clearStore(); // Clear existing choices
         choicesInstance.setChoices(userRolesOptions, "value", "label", true);
     } catch (error) {
@@ -140,6 +189,10 @@ window.createNewUserRole = async function () {
 
         await d2PostJson("/api/userRoles", newRole);
         showToast("User role created successfully!");
+
+        // Refresh dropdowns with existing roles
+        populateExistingRoles(existingRolesSelectInstance);
+        populateExistingRoles(modifyRolesSelectInstance);
     } catch (error) {
         console.error("Failed to create user role", error);
         showToast("Failed to create user role. Check console for details.", false);
@@ -158,11 +211,16 @@ window.validateUserRole = async function () {
         const allRolesResponse = await d2Get("/api/userRoles?fields=:owner&paging=false");
         const allRoles = allRolesResponse.userRoles;
 
-        const manageableRoles = allRoles.filter(role => {
-            if (role.id === existingRoleId) return false;
-            if (!role.authorities) return false;
-            return role.authorities.every(auth => validatedRoleAuthorities.has(auth));
-        });
+        let manageableRoles;
+        if (validatedRoleAuthorities.has("ALL")) {
+            manageableRoles = allRoles.filter(role => role.id !== existingRoleId);
+        } else {
+            manageableRoles = allRoles.filter(role => {
+                if (role.id === existingRoleId) return false;
+                if (!role.authorities) return false;
+                return role.authorities.every(auth => validatedRoleAuthorities.has(auth));
+            });
+        }
 
         const managedRoleNames = manageableRoles.map(role => role.name);
         const managedRoleIds = manageableRoles.map(role => role.id);
@@ -218,3 +276,4 @@ window.modifyUserRole = async function () {
     }
 };
 
+loadLegacyHeaderBarIfNeeded();
