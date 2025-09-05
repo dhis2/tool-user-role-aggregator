@@ -26,6 +26,35 @@ function showToast(message, success = true) {
 
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Check user authorities for create/update permissions
+    (async () => {
+        try {
+            const me = await d2Get("/api/me.json?fields=authorities");
+            const myAuthorities = new Set(me.authorities || []);
+            const canCreateOrUpdate = myAuthorities.has("F_USERROLE_PRIVATE_ADD") || myAuthorities.has("F_USERROLE_PUBLIC_ADD");
+            if (!canCreateOrUpdate) {
+                // Show warning
+                let container = document.querySelector("#create-new");
+                if (container) {
+                    let warning = document.createElement("div");
+                    warning.style.color = "#b71c1c";
+                    warning.style.background = "#ffebee";
+                    warning.style.padding = "12px";
+                    warning.style.marginBottom = "16px";
+                    warning.style.borderRadius = "4px";
+                    warning.innerHTML = "<b>Warning:</b> You do not have permission to create or update user roles.";
+                    container.insertBefore(warning, container.firstChild);
+                }
+                // Disable create and update buttons
+                const createBtn = document.getElementById("createRoleBtn");
+                if (createBtn) createBtn.disabled = true;
+                const modifyBtn = document.getElementById("modifyRoleBtn");
+                if (modifyBtn) modifyBtn.disabled = true;
+            }
+        } catch (e) {
+            // If error, do nothing (fail open)
+        }
+    })();
     // Initialize Materialize tabs
     const elems = document.querySelectorAll(".tabs");
     M.Tabs.init(elems);
