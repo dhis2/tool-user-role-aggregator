@@ -2,6 +2,8 @@
 
 //JS
 import { d2Get, d2PostJson, d2PutJson } from "./js/d2api.js";
+import { loadLegacyHeaderBarIfNeeded } from "./js/check-header-bar.js";
+
 import Choices from "choices.js";
 import M from "materialize-css";
 
@@ -218,3 +220,4 @@ window.modifyUserRole = async function () {
     }
 };
 
+loadLegacyHeaderBarIfNeeded();
