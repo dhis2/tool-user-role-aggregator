@@ -72,9 +72,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function populateUserRoles(choicesInstance) {
     try {
-        const response = await d2Get("/api/userRoles?paging=false");
+        // Fetch current user's authorities
+        const me = await d2Get("/api/me.json?fields=authorities");
+        const myAuthorities = new Set(me.authorities || []);
+
+        // Fetch all user roles
+        const response = await d2Get("/api/userRoles?fields=id,displayName,authorities&paging=false");
         const userRoles = response.userRoles;
-        const userRolesOptions = userRoles.map(role => ({ value: role.id, label: role.displayName }));
+
+        let filteredRoles;
+        if (myAuthorities.has("ALL")) {
+            filteredRoles = userRoles;
+        } else {
+            // Only include roles where all authorities are a subset of the user's authorities
+            filteredRoles = userRoles.filter(role => {
+                if (!role.authorities) return false;
+                return role.authorities.every(auth => myAuthorities.has(auth));
+            });
+        }
+
+        const userRolesOptions = filteredRoles.map(role => ({ value: role.id, label: role.displayName }));
         choicesInstance.clearStore(); // Clear existing choices
         choicesInstance.setChoices(userRolesOptions, "value", "label", true);
     } catch (error) {
