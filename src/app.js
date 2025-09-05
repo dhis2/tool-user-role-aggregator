@@ -142,6 +142,10 @@ window.createNewUserRole = async function () {
 
         await d2PostJson("/api/userRoles", newRole);
         showToast("User role created successfully!");
+
+        // Refresh dropdowns with existing roles
+        populateExistingRoles(existingRolesSelectInstance);
+        populateExistingRoles(modifyRolesSelectInstance);
     } catch (error) {
         console.error("Failed to create user role", error);
         showToast("Failed to create user role. Check console for details.", false);
@@ -160,11 +164,16 @@ window.validateUserRole = async function () {
         const allRolesResponse = await d2Get("/api/userRoles?fields=:owner&paging=false");
         const allRoles = allRolesResponse.userRoles;
 
-        const manageableRoles = allRoles.filter(role => {
-            if (role.id === existingRoleId) return false;
-            if (!role.authorities) return false;
-            return role.authorities.every(auth => validatedRoleAuthorities.has(auth));
-        });
+        let manageableRoles;
+        if (validatedRoleAuthorities.has("ALL")) {
+            manageableRoles = allRoles.filter(role => role.id !== existingRoleId);
+        } else {
+            manageableRoles = allRoles.filter(role => {
+                if (role.id === existingRoleId) return false;
+                if (!role.authorities) return false;
+                return role.authorities.every(auth => validatedRoleAuthorities.has(auth));
+            });
+        }
 
         const managedRoleNames = manageableRoles.map(role => role.name);
         const managedRoleIds = manageableRoles.map(role => role.id);
