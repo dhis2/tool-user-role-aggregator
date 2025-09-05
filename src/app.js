@@ -53,6 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) {
             // If error, do nothing (fail open)
+            console.log(e);
         }
     })();
     // Initialize Materialize tabs
