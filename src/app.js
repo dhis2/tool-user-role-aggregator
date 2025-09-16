@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const me = await d2Get("/api/me.json?fields=authorities");
             const myAuthorities = new Set(me.authorities || []);
-            const canCreateOrUpdate = myAuthorities.has("F_USERROLE_PRIVATE_ADD") || myAuthorities.has("F_USERROLE_PUBLIC_ADD");
+            const canCreateOrUpdate = myAuthorities.has("ALL") || myAuthorities.has("F_USERROLE_PRIVATE_ADD") || myAuthorities.has("F_USERROLE_PUBLIC_ADD");
             if (!canCreateOrUpdate) {
                 // Show warning
                 let container = document.querySelector("#create-new");
