@@ -1,0 +1,36 @@
+# End-to-end tests
+
+Playwright-driven functional tests that exercise the app against a live DHIS2 instance. They were written for the 2026-07-09 App Platform migration review (see `docs/review-2026-07-09/`) and are reusable for regression testing.
+
+Unit tests live next to the code in `src/` (`pnpm test`); this folder holds only the e2e suite.
+
+## What the suite does
+
+`suite.py` installs the production bundle (`build/bundle/*.zip`) into the target instance via `POST /api/apps`, then drives both app flows in Chromium and verifies every mutation through the API:
+
+- create page renders, transfers populated, default authorities preselected
+- form validation blocks an empty submit
+- create role → API-verified aggregated authorities
+- update page: managed-roles list, add authorities from another role → API-verified merge, owner fields preserved
+- cache invalidation (managed list refreshes without reload)
+- console / page-error / failed-request / HTTP ≥ 400 capture throughout
+- created roles are deleted afterwards
+
+`extra_tests.py` (needs DHIS2 2.42+ for the global shell) checks URL sync inside the global shell and the missing-permissions behavior for a non-privileged user (creates and deletes a test user).
+
+## Requirements
+
+- `pip install playwright && playwright install chromium`
+- A **disposable** DHIS2 instance with demo data (e.g. Sierra Leone seed) — the suite creates and deletes user roles.
+- `pnpm run build` first, so the bundle zip exists.
+
+## Running
+
+```bash
+python3 tests/e2e/suite.py --base http://dhis2-<instance>:8080 --label 2.42 \
+    [--user admin] [--password district] [--zip build/bundle/user-role-aggregator-<version>.zip]
+
+DHIS2_BASE_URL=http://dhis2-<instance>:8080 python3 tests/e2e/extra_tests.py
+```
+
+Screenshots and a `results.json` are written next to the scripts, in a folder named after the `--label`. Exit code is non-zero if any step fails.
