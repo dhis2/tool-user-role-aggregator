@@ -1,0 +1,53 @@
+name: Build and Release
+
+on:
+    push:
+        branches:
+            - main
+        tags:
+            - 'v*.*.*'
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+
+            - name: Use Node.js 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22.x
+                  cache: pnpm
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Lint
+              run: pnpm run lint
+
+            - name: Build
+              run: pnpm run build
+
+            - name: Get version
+              run: echo "version=$(jq -r .version package.json)" >> $GITHUB_ENV
+
+            - name: Get app name
+              run: echo "app_name=$(jq -r .name package.json)" >> $GITHUB_ENV
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  draft: false
+                  prerelease: false
+                  name: ${{ env.version }}
+                  tag_name: v${{ env.version }}
+                  body_path: CHANGELOG.md
+                  files: build/bundle/${{ env.app_name }}-${{ env.version }}.zip
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
