@@ -13,3 +13,4 @@ tests/e2e/output
 # OS / editor
 .DS_Store
 .vscode
+__pycache__/

@@ -6,6 +6,7 @@ Usage: DHIS2_BASE_URL=http://dhis2-<instance>:8080 python3 extra_tests.py
 import base64
 import json
 import os
+import secrets
 import sys
 import urllib.error
 import urllib.request
@@ -13,8 +14,15 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-BASE = os.environ.get("DHIS2_BASE_URL", "http://dhis2-agent-review:8080")
+BASE = os.environ.get("DHIS2_BASE_URL")
+if not BASE:
+    sys.exit("DHIS2_BASE_URL is required (see usage in the module docstring)")
 HOST = BASE.split("://", 1)[1].split(":")[0]
+ADMIN_USER = os.environ.get("DHIS2_ADMIN_USER", "admin")
+ADMIN_PASSWORD = os.environ.get("DHIS2_ADMIN_PASSWORD", "district")
+# temporary non-privileged user, created and deleted by this script
+LIMITED_USERNAME = "agent_review_limited"
+LIMITED_PASSWORD = "Xy7!" + secrets.token_hex(8)
 OUT = Path(__file__).parent / "output" / "extra-tests"
 OUT.mkdir(parents=True, exist_ok=True)
 results = []
@@ -25,7 +33,7 @@ def rec(step, status, detail=""):
     print(f"{status}: {step} {('- ' + detail) if detail else ''}", flush=True)
 
 
-def api(method, path, data=None, user="admin", password="district"):
+def api(method, path, data=None, user=ADMIN_USER, password=ADMIN_PASSWORD):
     req = urllib.request.Request(
         f"{BASE}{path}",
         data=None if data is None else json.dumps(data).encode(),
@@ -68,7 +76,7 @@ def app_frame(page):
 
 
 def test_url_sync(p):
-    cn, cv = cookie("admin", "district")
+    cn, cv = cookie(ADMIN_USER, ADMIN_PASSWORD)
     b = p.chromium.launch()
     ctx = b.new_context(viewport={"width": 1400, "height": 900})
     ctx.add_cookies([{"name": cn, "value": cv, "domain": HOST, "path": "/"}])
@@ -103,8 +111,8 @@ def test_nonprivileged(p):
     st, ous = api("GET", "/api/organisationUnits?level=1&fields=id&pageSize=1")
     ou = ous["organisationUnits"][0]["id"]
     payload = {
-        "username": "agent_review_limited",
-        "password": "Agent-Review-1!",
+        "username": LIMITED_USERNAME,
+        "password": LIMITED_PASSWORD,
         "firstName": "Agent",
         "surname": "Limited",
         "userRoles": [{"id": clerk_id}],
@@ -119,7 +127,7 @@ def test_nonprivileged(p):
         return None
 
     try:
-        cn, cv = cookie("agent_review_limited", "Agent-Review-1!")
+        cn, cv = cookie(LIMITED_USERNAME, LIMITED_PASSWORD)
     except Exception as e:
         rec("Limited user login", "FAIL", str(e)[:100])
         return uid

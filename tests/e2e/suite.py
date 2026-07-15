@@ -20,6 +20,9 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 OUTDIR = Path(__file__).parent / "output"
+TRANSFER = '[data-test="dhis2-uicore-transfer"]'
+TRANSFER_OPTION = '[data-test="dhis2-uicore-transferoption"]'
+CLERK_ROLE = "Data entry clerk"
 
 
 def api(base, user, password, method, path, data=None, content_type="application/json", raw=False):
@@ -35,7 +38,9 @@ def api(base, user, password, method, path, data=None, content_type="application
     try:
         with urllib.request.urlopen(req) as r:
             body = r.read()
-            return r.status, (body if raw else (json.loads(body) if body else None))
+            if raw:
+                return r.status, body
+            return r.status, (json.loads(body) if body else None)
     except urllib.error.HTTPError as e:
         body = e.read()
         try:
@@ -45,8 +50,11 @@ def api(base, user, password, method, path, data=None, content_type="application
 
 
 def install_app(base, user, password, zip_path):
+    zip_file = Path(zip_path).resolve()
+    if zip_file.suffix != ".zip" or not zip_file.is_file():
+        raise ValueError(f"--zip must point to an existing .zip file, got: {zip_path}")
     boundary = "----agentboundary42"
-    payload = Path(zip_path).read_bytes()
+    payload = zip_file.read_bytes()
     body = (
         f"--{boundary}\r\n"
         f'Content-Disposition: form-data; name="file"; filename="app.zip"\r\n'
@@ -102,15 +110,22 @@ class Suite:
         return page.main_frame
 
     def transfer_pick(self, frame, transfer_index, option_label):
-        transfers = frame.locator('[data-test="dhis2-uicore-transfer"]')
+        transfers = frame.locator(TRANSFER)
         t = transfers.nth(transfer_index)
         # filter to the option to avoid scrolling long lists
         t.locator('[data-test="dhis2-uicore-transfer-filter"] input').first.fill(option_label)
-        opt = t.locator('[data-test="dhis2-uicore-transferoption"]', has_text=option_label).first
+        opt = t.locator(TRANSFER_OPTION, has_text=option_label).first
         opt.dblclick()
 
     def run(self, zip_path):
-        # --- API preflight ---
+        self.api_preflight()
+        launch = self.install(zip_path)
+        role_name = f"Agent Test Admin Role {int(time.time())}"
+        self.run_browser_flows(launch, role_name)
+        self.cleanup_roles()
+        self.summarize()
+
+    def api_preflight(self):
         st, info = api(self.base, self.user, self.password, "GET", "/api/system/info")
         self.record("API: system/info", "PASS" if st == 200 else "FAIL", f"version={info.get('version') if st==200 else st}")
         st, roles = api(self.base, self.user, self.password, "GET",
@@ -122,15 +137,16 @@ class Suite:
         self.record("API: authorities list", "PASS" if st == 200 and n_auths > 0 else "FAIL", f"{n_auths} authorities")
         self.demo_roles = {r["displayName"]: r for r in roles.get("userRoles", [])}
 
-        # --- Install app ---
-        st, resp = install_app(self.base, self.user, self.password, zip_path)
+    def install(self, zip_path):
+        st, _ = install_app(self.base, self.user, self.password, zip_path)
         self.record("Install app zip via /api/apps", "PASS" if st in (200, 201, 204) else "FAIL", f"http {st}")
         st, apps = api(self.base, self.user, self.password, "GET", "/api/apps")
         entry = next((a for a in apps if "user-role-aggregator" in (a.get("key") or "")), None) if st == 200 else None
         launch = entry.get("launchUrl") if entry else f"{self.base}/api/apps/user-role-aggregator/index.html"
         self.record("App registered", "PASS" if entry else "WARN", f"launchUrl={launch}")
+        return launch
 
-        # --- Browser session ---
+    def run_browser_flows(self, launch, role_name):
         cn, cv = login_cookie(self.base, self.user, self.password)
         host = self.base.split("://", 1)[1].split(":")[0]
         with sync_playwright() as p:
@@ -142,9 +158,6 @@ class Suite:
             page.on("pageerror", lambda e: self.pageerrors.append(str(e)))
             page.on("requestfailed", lambda r: self.reqfailed.append((r.url, str(r.failure))))
             page.on("response", lambda r: self.http_errors.append((r.status, r.url)) if r.status >= 400 else None)
-
-            ts = int(time.time())
-            role_name = f"Agent Test Admin Role {ts}"
             try:
                 self.flow_create(page, launch, role_name)
                 self.flow_update(page, role_name)
@@ -152,12 +165,12 @@ class Suite:
                 self.shot(page, "final")
                 browser.close()
 
-        # --- cleanup created roles ---
+    def cleanup_roles(self):
         for uid in self.created_role_uids:
             st, _ = api(self.base, self.user, self.password, "DELETE", f"/api/userRoles/{uid}")
             self.record(f"Cleanup: delete role {uid}", "PASS" if st in (200, 204) else "FAIL", f"http {st}")
 
-        # --- event stream summary ---
+    def summarize(self):
         self.record("Console errors", "PASS" if not [c for c in self.console if c[0] == "error"] else "WARN",
                     f"{len([c for c in self.console if c[0]=='error'])} errors")
         self.record("Page errors", "PASS" if not self.pageerrors else "FAIL", f"{len(self.pageerrors)}")
@@ -187,14 +200,13 @@ class Suite:
             raise
         self.shot(page, "create-page")
 
-        transfers = f.locator('[data-test="dhis2-uicore-transfer"]')
-        n_role_opts = transfers.nth(0).locator('[data-test="dhis2-uicore-transferoption"]').count()
+        transfers = f.locator(TRANSFER)
+        n_role_opts = transfers.nth(0).locator(TRANSFER_OPTION).count()
         self.record("Roles transfer populated", "PASS" if n_role_opts > 0 else "FAIL", f"{n_role_opts} options")
 
-        picked = f.locator('[data-test="dhis2-uicore-transfer"]').nth(1) \
-            .locator('[data-test="dhis2-uicore-transfer-pickedoptions"] [data-test="dhis2-uicore-transferoption"]')
+        picked = f.locator(TRANSFER).nth(1) \
+            .locator(f'[data-test="dhis2-uicore-transfer-pickedoptions"] {TRANSFER_OPTION}')
         picked_labels = picked.all_inner_texts()
-        expected_defaults = {"F_USER_ADD", "F_USER_DELETE", "M_dhis-web-user", "F_USER_VIEW"}
         # authority *names* are shown, not ids; just assert some defaults picked
         self.record("Default authorities preselected", "PASS" if len(picked_labels) >= 3 else "FAIL",
                     f"{len(picked_labels)} picked: {picked_labels[:6]}")
@@ -208,7 +220,7 @@ class Suite:
 
         # --- fill and submit ---
         f.locator('input[type="text"]').first.fill(role_name)
-        self.transfer_pick(f, 0, "Data entry clerk")
+        self.transfer_pick(f, 0, CLERK_ROLE)
         self.shot(page, "create-filled")
         f.locator("button", has_text="Create role").click()
         try:
@@ -225,7 +237,7 @@ class Suite:
         found = res.get("userRoles", []) if st == 200 else []
         if found:
             self.created_role_uids.append(found[0]["id"])
-            clerk = self.demo_roles.get("Data entry clerk", {})
+            clerk = self.demo_roles.get(CLERK_ROLE, {})
             clerk_auths = set(clerk.get("authorities", []))
             new_auths = set(found[0].get("authorities", []))
             missing = clerk_auths - new_auths
@@ -263,7 +275,7 @@ class Suite:
         self.shot(page, "update-selected")
 
         managed = f.locator("ul li").all_inner_texts()
-        has_clerk = any("Data entry clerk" in m for m in managed)
+        has_clerk = any(CLERK_ROLE in m for m in managed)
         self.record("Managed roles list shows Data entry clerk", "PASS" if has_clerk else "FAIL",
                     f"{len(managed)} managed listed")
 
@@ -271,7 +283,7 @@ class Suite:
         target = "M and E Officer"
         if target not in self.demo_roles:
             target = next((n for n in self.demo_roles
-                           if n != "Data entry clerk" and "Super" not in n and self.demo_roles[n].get("authorities")), None)
+                           if n != CLERK_ROLE and "Super" not in n and self.demo_roles[n].get("authorities")), None)
         self.transfer_pick(f, 0, target)  # only one transfer on this page
         self.shot(page, "update-picked")
         f.locator("button", has_text="Add authorities to role").click()
