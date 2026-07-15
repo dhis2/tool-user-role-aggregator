@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Extra tests (2.42+ instances): global-shell URL sync + non-privileged user warning.
 
-Usage: DHIS2_BASE_URL=http://dhis2-<instance>:8080 python3 extra_tests.py
+Usage:
+  DHIS2_BASE_URL=http://dhis2-<instance>:8080 DHIS2_ADMIN_PASSWORD=<password> python3 extra_tests.py
+
+DHIS2_ADMIN_USER defaults to "admin"; broker/demo instances use the standard demo password.
 """
 import base64
 import json
@@ -19,7 +22,9 @@ if not BASE:
     sys.exit("DHIS2_BASE_URL is required (see usage in the module docstring)")
 HOST = BASE.split("://", 1)[1].split(":")[0]
 ADMIN_USER = os.environ.get("DHIS2_ADMIN_USER", "admin")
-ADMIN_PASSWORD = os.environ.get("DHIS2_ADMIN_PASSWORD", "district")
+ADMIN_PASSWORD = os.environ.get("DHIS2_ADMIN_PASSWORD")
+if not ADMIN_PASSWORD:
+    sys.exit("DHIS2_ADMIN_PASSWORD is required (see usage in the module docstring)")
 # temporary non-privileged user, created and deleted by this script
 LIMITED_USERNAME = "agent_review_limited"
 LIMITED_PASSWORD = "Xy7!" + secrets.token_hex(8)
