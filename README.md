@@ -49,6 +49,15 @@ pnpm test
 
 Unit tests live next to the code in `src/`. Playwright end-to-end tests (run against a disposable DHIS2 instance) live in `tests/e2e/` — see `tests/e2e/README.md`.
 
+### Releasing
+
+`.github/workflows/ci.yml` lints, typechecks, tests and builds every pull request. A release is cut only when a version tag is pushed:
+
+1. Bump `version` in `package.json` and add the matching section to `CHANGELOG.md`.
+2. Push a `v<version>` tag (e.g. `v1.0.0`).
+
+`.github/workflows/release.yml` then verifies that the tag matches `package.json`, builds the app, and publishes a GitHub release with that CHANGELOG section as the notes and the bundle zip attached.
+
 ## Documentation
 
 - `docs/MANUAL.md` — user manual (installation and usage)

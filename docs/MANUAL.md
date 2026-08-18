@@ -9,11 +9,11 @@ The User Role Aggregator Tool is designed to streamline the management of user r
 1. [Requirements](#requirements)
 2. [Installation](#installation)
 3. [Usage](#usage)
-    - [Create New User Admin Role](#create-new-user-admin-role)
-    - [Update Existing User Admin Role](#update-existing-user-admin-role)
+    - [Create New User Role for User Admins](#create-new-user-role-for-user-admins)
+    - [Validate or Update Existing User Admin Role](#validate-or-update-existing-user-admin-role)
 4. [Feedback and Notifications](#feedback-and-notifications)
 5. [Testing](#testing)
-6. [Troubleshooting](#troubleshooting)
+6. [Reporting Issues](#reporting-issues)
 
 ## Requirements
 

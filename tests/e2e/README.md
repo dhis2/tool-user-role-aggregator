@@ -27,10 +27,15 @@ Unit tests live next to the code in `src/` (`pnpm test`); this folder holds only
 ## Running
 
 ```bash
+export DHIS2_ADMIN_PASSWORD=<password>   # or pass --password to suite.py
+
 python3 tests/e2e/suite.py --base http://dhis2-<instance>:8080 --label 2.42 \
-    [--user admin] [--password district] [--zip build/bundle/tool-user-role-aggregator-<version>.zip]
+    [--user admin] [--zip build/bundle/<app>-<version>.zip]
 
 DHIS2_BASE_URL=http://dhis2-<instance>:8080 python3 tests/e2e/extra_tests.py
 ```
+
+The zip defaults to the bundle matching the name and version in `package.json`;
+the app key the tests open is read from the same file.
 
 Screenshots and a `results.json` are written next to the scripts, in a folder named after the `--label`. Exit code is non-zero if any step fails.

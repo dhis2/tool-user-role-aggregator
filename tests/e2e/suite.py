@@ -5,12 +5,16 @@ Installs the built zip into a DHIS2 instance, drives the UI with Playwright,
 verifies effects via the API, and cleans up created metadata.
 
 Usage:
-  python3 suite.py --base http://dhis2-agent-review-ura-240:8080 --label 2.40 \
-      [--zip /tool-user-role-aggregator/build/bundle/tool-user-role-aggregator-1.0.0.zip]
+  DHIS2_ADMIN_PASSWORD=<password> python3 suite.py \
+      --base http://dhis2-<instance>:8080 --label 2.42 [--user admin] [--zip <bundle.zip>]
+
+The password can also be passed with --password. The zip defaults to the
+bundle for the current package.json name and version.
 """
 import argparse
 import base64
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -20,8 +24,11 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 OUTDIR = Path(__file__).parent / "output"
+PROJECT_DIR = Path(__file__).parents[2]
+PKG = json.loads((PROJECT_DIR / "package.json").read_text())
 # The DHIS2 app key equals the app name in package.json / d2.config.js
-APP_KEY = json.loads((Path(__file__).parents[2] / "package.json").read_text())["name"]
+APP_KEY = PKG["name"]
+DEFAULT_ZIP = PROJECT_DIR / "build" / "bundle" / f"{APP_KEY}-{PKG['version']}.zip"
 TRANSFER = '[data-test="dhis2-uicore-transfer"]'
 TRANSFER_OPTION = '[data-test="dhis2-uicore-transferoption"]'
 CLERK_ROLE = "Data entry clerk"
@@ -321,10 +328,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", required=True)
     ap.add_argument("--label", required=True)
-    ap.add_argument("--user", default="admin")
-    ap.add_argument("--password", default="district")
-    ap.add_argument("--zip", default="/tool-user-role-aggregator/build/bundle/user-role-aggregator-1.0.0.zip")
+    ap.add_argument("--user", default=os.environ.get("DHIS2_ADMIN_USER", "admin"))
+    ap.add_argument("--password", default=os.environ.get("DHIS2_ADMIN_PASSWORD"))
+    ap.add_argument("--zip", default=str(DEFAULT_ZIP))
     args = ap.parse_args()
+    if not args.password:
+        ap.error("--password or DHIS2_ADMIN_PASSWORD is required")
     s = Suite(args.base, args.label, args.user, args.password)
     s.run(args.zip)
     fails = [r for r in s.results if r["status"] == "FAIL"]
