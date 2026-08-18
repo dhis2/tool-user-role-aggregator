@@ -1,5 +1,5 @@
 {
-    "name": "user-role-aggregator",
+    "name": "tool-user-role-aggregator",
     "version": "1.0.0",
     "description": "Tool to validate and create/modify user roles for users who should manage other users.",
     "license": "BSD-3-Clause",

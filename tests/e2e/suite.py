@@ -6,7 +6,7 @@ verifies effects via the API, and cleans up created metadata.
 
 Usage:
   python3 suite.py --base http://dhis2-agent-review-ura-240:8080 --label 2.40 \
-      [--zip /tool-user-role-aggregator/build/bundle/user-role-aggregator-1.0.0.zip]
+      [--zip /tool-user-role-aggregator/build/bundle/tool-user-role-aggregator-1.0.0.zip]
 """
 import argparse
 import base64
@@ -20,6 +20,8 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 OUTDIR = Path(__file__).parent / "output"
+# The DHIS2 app key equals the app name in package.json / d2.config.js
+APP_KEY = json.loads((Path(__file__).parents[2] / "package.json").read_text())["name"]
 TRANSFER = '[data-test="dhis2-uicore-transfer"]'
 TRANSFER_OPTION = '[data-test="dhis2-uicore-transferoption"]'
 CLERK_ROLE = "Data entry clerk"
@@ -141,8 +143,8 @@ class Suite:
         st, _ = install_app(self.base, self.user, self.password, zip_path)
         self.record("Install app zip via /api/apps", "PASS" if st in (200, 201, 204) else "FAIL", f"http {st}")
         st, apps = api(self.base, self.user, self.password, "GET", "/api/apps")
-        entry = next((a for a in apps if "user-role-aggregator" in (a.get("key") or "")), None) if st == 200 else None
-        launch = entry.get("launchUrl") if entry else f"{self.base}/api/apps/user-role-aggregator/index.html"
+        entry = next((a for a in apps if APP_KEY in (a.get("key") or "")), None) if st == 200 else None
+        launch = entry.get("launchUrl") if entry else f"{self.base}/api/apps/{APP_KEY}/index.html"
         self.record("App registered", "PASS" if entry else "WARN", f"launchUrl={launch}")
         return launch
 

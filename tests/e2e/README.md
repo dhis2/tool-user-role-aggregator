@@ -28,7 +28,7 @@ Unit tests live next to the code in `src/` (`pnpm test`); this folder holds only
 
 ```bash
 python3 tests/e2e/suite.py --base http://dhis2-<instance>:8080 --label 2.42 \
-    [--user admin] [--password district] [--zip build/bundle/user-role-aggregator-<version>.zip]
+    [--user admin] [--password district] [--zip build/bundle/tool-user-role-aggregator-<version>.zip]
 
 DHIS2_BASE_URL=http://dhis2-<instance>:8080 python3 tests/e2e/extra_tests.py
 ```

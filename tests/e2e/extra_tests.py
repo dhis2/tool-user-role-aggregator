@@ -28,6 +28,8 @@ if not ADMIN_PASSWORD:
 # temporary non-privileged user, created and deleted by this script
 LIMITED_USERNAME = "agent_review_limited"
 LIMITED_PASSWORD = "Xy7!" + secrets.token_hex(8)
+# The DHIS2 app key equals the app name in package.json / d2.config.js
+APP_KEY = json.loads((Path(__file__).parents[2] / "package.json").read_text())["name"]
 OUT = Path(__file__).parent / "output" / "extra-tests"
 OUT.mkdir(parents=True, exist_ok=True)
 results = []
@@ -89,7 +91,7 @@ def test_url_sync(p):
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     # global shell path on 2.42+
-    page.goto(f"{BASE}/apps/user-role-aggregator", wait_until="domcontentloaded")
+    page.goto(f"{BASE}/apps/{APP_KEY}", wait_until="domcontentloaded")
     page.wait_for_timeout(4000)
     f = app_frame(page)
     in_shell = f != page.main_frame
@@ -140,7 +142,7 @@ def test_nonprivileged(p):
     ctx = b.new_context(viewport={"width": 1400, "height": 900})
     ctx.add_cookies([{"name": cn, "value": cv, "domain": HOST, "path": "/"}])
     page = ctx.new_page()
-    page.goto(f"{BASE}/api/apps/user-role-aggregator/index.html", wait_until="domcontentloaded")
+    page.goto(f"{BASE}/api/apps/{APP_KEY}/index.html", wait_until="domcontentloaded")
     page.wait_for_timeout(5000)
     f = app_frame(page)
     page.screenshot(path=str(OUT / "limited-user.png"), full_page=True)

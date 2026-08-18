@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 
 ### Upgrade note
 
-- The app identifier changed from `tool_user_role_aggregator` to `user-role-aggregator`. Installing the new version does **not** replace the old one — uninstall the old "User Admin Role Aggregator" app in App Management first.
+- The app identifier changed from `tool_user_role_aggregator` to `tool-user-role-aggregator` (hyphens instead of underscores). Installing the new version does **not** replace the old one — uninstall the old "User Admin Role Aggregator" app in App Management first.
 
 ## [0.3.1]
 
