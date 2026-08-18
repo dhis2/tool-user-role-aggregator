@@ -1,4 +1,3 @@
-import { IconChevronDown16 } from '@dhis2/ui'
 import cx from 'classnames'
 import React, { PropsWithChildren } from 'react'
 import styles from './Sidenav.module.css'
@@ -12,33 +11,6 @@ export const Sidenav = ({
 
 export const SidenavItems = ({ children }: PropsWithChildren) => (
     <ul className={styles.sidenavItems}>{children}</ul>
-)
-
-export const SidenavFooter = ({ children }: PropsWithChildren) => (
-    <div className={styles.sidenavFooter}>{children}</div>
-)
-
-interface SidenavParentProps {
-    label: string
-    open: boolean
-    onClick: () => void
-}
-
-export const SidenavParent = ({
-    label,
-    open,
-    onClick,
-    children,
-}: PropsWithChildren<SidenavParentProps>) => (
-    <li className={cx(styles.sidenavParent, { [styles.parentIsOpen]: open })}>
-        <button onClick={onClick}>
-            <span>{label}</span>
-            <span className={styles.sidenavParentChevron}>
-                <IconChevronDown16 />
-            </span>
-        </button>
-        {open && <ul className={styles.sidenavSubmenu}>{children}</ul>}
-    </li>
 )
 
 interface SidenavLinkProps {

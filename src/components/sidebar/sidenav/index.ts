@@ -1,7 +1,1 @@
-export {
-    Sidenav,
-    SidenavItems,
-    SidenavFooter,
-    SidenavParent,
-    SidenavLink,
-} from './Sidenav'
+export { Sidenav, SidenavItems, SidenavLink } from './Sidenav'

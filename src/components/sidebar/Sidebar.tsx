@@ -12,20 +12,13 @@ const SidebarNavLink = ({ to, label, end }: LinkItem & { end?: boolean }) => (
     <SidenavLink to={to} label={label} end={end} LinkComponent={NavLink} />
 )
 
-export const Sidebar = ({
-    className,
-    hideSidebar,
-}: {
-    className?: string
-    hideSidebar?: boolean
-}) => {
+export const Sidebar = ({ className }: { className?: string }) => {
     const [collapsed, setCollapsed] = useState(false)
-    const isCollapsed = collapsed || hideSidebar
 
     return (
         <aside
             className={cx(styles.asideWrapper, className, {
-                [styles.collapsed]: isCollapsed,
+                [styles.collapsed]: collapsed,
             })}
         >
             <Sidenav>
@@ -48,7 +41,7 @@ export const Sidebar = ({
             >
                 <div
                     className={cx(styles.iconWrapper, {
-                        [styles.collapsed]: isCollapsed,
+                        [styles.collapsed]: collapsed,
                     })}
                 >
                     <IconChevronLeft24 />

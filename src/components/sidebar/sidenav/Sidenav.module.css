@@ -35,49 +35,6 @@ html {
     padding-block-start: var(--spacers-dp8);
 }
 
-/* Parent (collapsible group) */
-
-.sidenavParent button {
-    border: none;
-    background: var(--sidenav-dark-bg);
-    color: var(--colors-grey300);
-    font-size: 16px;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    width: 100%;
-    min-height: 32px;
-    padding: 8px 8px 8px 12px;
-    cursor: pointer;
-}
-
-.sidenavParent button:hover {
-    text-decoration: underline;
-    background: var(--sidenav-dark-bg-hover);
-}
-
-.sidenavParent button:focus {
-    outline: 2px solid white;
-    background: var(--sidenav-dark-bg-hover);
-    outline-offset: -2px;
-}
-
-.sidenavParent button:focus:not(:focus-visible) {
-    outline: none;
-    background: var(--sidenav-dark-bg);
-}
-
-.sidenavParentChevron {
-    margin-left: auto;
-    width: 16px;
-    height: 16px;
-    transition: transform 0.1s linear;
-}
-
-.parentIsOpen .sidenavParentChevron {
-    transform: rotate(180deg);
-}
-
 /* Link */
 
 .sidenavLink a {
@@ -124,16 +81,4 @@ html {
     color: var(--colors-grey300);
     background: var(--sidenav-dark-bg-selected);
     box-shadow: inset 6px 0px 0px 0px var(--colors-teal400);
-}
-
-/* Indent links inside a parent */
-.sidenavParent .sidenavLink a {
-    padding-left: var(--spacers-dp32);
-}
-
-/* Footer */
-
-.sidenavFooter {
-    margin-top: auto;
-    padding-bottom: 52px;
 }
