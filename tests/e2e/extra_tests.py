@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extra tests (2.42+ instances): global-shell URL sync + non-privileged user warning.
+"""Extra tests: global-shell URL sync (2.42+, skipped below that) + non-privileged user warning.
 
 Usage:
   DHIS2_BASE_URL=http://dhis2-<instance>:8080 DHIS2_ADMIN_PASSWORD=<password> python3 extra_tests.py
@@ -75,14 +75,27 @@ def cookie(user, password):
     raise RuntimeError("no cookie")
 
 
+def dhis2_major():
+    """Major version of the target instance, e.g. 41 for 2.41.9.1."""
+    _, info = api("GET", "/api/system/info")
+    parts = (info.get("version") or "").split(".")
+    if parts[0] == "2":
+        parts = parts[1:]
+    return int(parts[0]) if parts and parts[0].isdigit() else 0
+
+
 def app_frame(page):
     for f in page.frames:
-        if "user-role-aggregator" in (f.url or "") and f != page.main_frame:
+        if APP_KEY in (f.url or "") and f != page.main_frame:
             return f
     return page.main_frame
 
 
 def test_url_sync(p):
+    # The global shell (and the /apps/<key> path) only exists on 2.42+
+    if dhis2_major() < 42:
+        rec("Global shell URL sync", "SKIP", "requires DHIS2 2.42+")
+        return
     cn, cv = cookie(ADMIN_USER, ADMIN_PASSWORD)
     b = p.chromium.launch()
     ctx = b.new_context(viewport={"width": 1400, "height": 900})

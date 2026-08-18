@@ -114,7 +114,7 @@ class Suite:
     def app_frame(self, page):
         # App may render inside global shell iframe (2.42+) or top-level (2.40)
         for f in page.frames:
-            if "user-role-aggregator" in (f.url or "") and f != page.main_frame:
+            if APP_KEY in (f.url or "") and f != page.main_frame:
                 return f
         return page.main_frame
 
