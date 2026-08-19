@@ -62,3 +62,4 @@ Unit tests live next to the code in `src/`. Playwright end-to-end tests (run aga
 
 - `docs/MANUAL.md` — user manual (installation and usage)
 - `docs/review-2026-07-09/` — findings and test results from the App Platform migration review
+- `docs/review-2026-08-18/` — release-readiness test results on DHIS2 2.41 and 2.42
