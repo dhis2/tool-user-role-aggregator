@@ -72,6 +72,8 @@ The User Role Aggregator Tool is designed to streamline the management of user r
 
     Use the "Additional authorities" transfer widget to add additional authorities for the new role. The authorities related to user management are pre-selected, but can be deselected.
 
+    Only authorities you hold yourself are listed: the tool will not let you create a role more privileged than your own account. Superusers (users with the `ALL` authority) see every authority.
+
 5. **Create Role:**
 
     Click on the "Create role" button to create the new user admin role. You will receive a success or error message based on the outcome.
@@ -88,7 +90,7 @@ The User Role Aggregator Tool is designed to streamline the management of user r
 
 3. **Add Managed Roles:**
 
-    Use the "Add managed roles" transfer widget to pick additional roles that the selected role should be able to manage.
+    Use the "Add managed roles" transfer widget to pick additional roles that the selected role should be able to manage. Only roles whose authorities you hold yourself are listed, for the same reason as above — so if the list is empty, it means there are no further roles you are allowed to add, not that the role already manages everything.
 
 4. **Save:**
 

@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Superusers (holders of the `ALL` authority) no longer see an incorrect "missing permissions" warning when their roles do not explicitly list the user-role authorities.
 - Authorities are now fetched fresh from the server when a role is created or updated, so the saved role reflects concurrent edits made by other administrators instead of a stale cached list.
 - Roles without any authorities are now (correctly) considered manageable by anyone, and appear in the role pickers and "can be managed" lists; the old app hid them.
+- The role and authority pickers now list only the roles and authorities the signed-in user holds themselves, so the pickers cannot be used to build a role with more authorities than the user's own account. Superusers (holders of `ALL`) see everything, as before.
 
 ### Upgrade note
 

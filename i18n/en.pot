@@ -5,8 +5,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"POT-Creation-Date: 2026-07-09T13:37:24.606Z\n"
-"PO-Revision-Date: 2026-07-09T13:37:24.607Z\n"
+"POT-Creation-Date: 2026-08-18T13:38:17.819Z\n"
+"PO-Revision-Date: 2026-08-18T13:38:17.821Z\n"
 
 msgid "Missing permissions"
 msgstr "Missing permissions"
@@ -52,6 +52,9 @@ msgstr "User roles to manage"
 
 msgid "Additional authorities"
 msgstr "Additional authorities"
+
+msgid "Only authorities you hold yourself are listed."
+msgstr "Only authorities you hold yourself are listed."
 
 msgid "Create role"
 msgstr "Create role"
@@ -108,8 +111,18 @@ msgstr "Add managed roles"
 msgid "The authorities of the selected roles will be added to {{role}}"
 msgstr "The authorities of the selected roles will be added to {{role}}"
 
+msgid "Only roles whose authorities you hold yourself are listed."
+msgstr "Only roles whose authorities you hold yourself are listed."
+
 msgid "Add authorities to role"
 msgstr "Add authorities to role"
+
+msgid ""
+"There are no further roles you can add to this role. You can only add roles "
+"whose authorities you hold yourself."
+msgstr ""
+"There are no further roles you can add to this role. You can only add roles "
+"whose authorities you hold yourself."
 
 msgid "This role can already manage all other user roles."
 msgstr "This role can already manage all other user roles."

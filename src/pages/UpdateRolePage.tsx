@@ -18,7 +18,9 @@ import { canManageRole } from '@/types/userRole'
 
 export const UpdateRolePage = () => {
     const {
+        authorities: myAuthorities,
         canAddUserRoles,
+        isSuperuser,
         isLoading: isLoadingMe,
         error: meError,
     } = useCurrentUserAuthorities()
@@ -37,23 +39,41 @@ export const UpdateRolePage = () => {
 
     const selectedRole = userRoles?.find((role) => role.id === selectedRoleId)
 
-    const { managedRoles, candidateRoles } = useMemo(() => {
-        if (!userRoles || !selectedRole) {
-            return { managedRoles: [], candidateRoles: [] }
-        }
-        const heldAuthorities = new Set(selectedRole.authorities ?? [])
-        const otherRoles = userRoles.filter(
-            (role) => role.id !== selectedRole.id
-        )
-        return {
-            managedRoles: otherRoles.filter((role) =>
-                canManageRole(heldAuthorities, role)
-            ),
-            candidateRoles: otherRoles.filter(
-                (role) => !canManageRole(heldAuthorities, role)
-            ),
-        }
-    }, [userRoles, selectedRole])
+    const { managedRoles, candidateRoles, hasRolesBeyondReach } =
+        useMemo(() => {
+            if (!userRoles || !selectedRole) {
+                return {
+                    managedRoles: [],
+                    candidateRoles: [],
+                    hasRolesBeyondReach: false,
+                }
+            }
+            const heldAuthorities = new Set(selectedRole.authorities ?? [])
+            const otherRoles = userRoles.filter(
+                (role) => role.id !== selectedRole.id
+            )
+            return {
+                managedRoles: otherRoles.filter((role) =>
+                    canManageRole(heldAuthorities, role)
+                ),
+                // Only roles the signed-in user could manage themselves: their
+                // authorities are a subset of the user's own, so aggregating them
+                // can never grant away an authority the user does not hold.
+                candidateRoles: otherRoles.filter(
+                    (role) =>
+                        !canManageRole(heldAuthorities, role) &&
+                        canManageRole(myAuthorities, role)
+                ),
+                // Roles the selected role cannot manage and that the signed-in
+                // user may not grant either — they are withheld, not absent, so
+                // the empty state must not claim every role is already covered.
+                hasRolesBeyondReach: otherRoles.some(
+                    (role) =>
+                        !canManageRole(heldAuthorities, role) &&
+                        !canManageRole(myAuthorities, role)
+                ),
+            }
+        }, [userRoles, selectedRole, myAuthorities])
 
     if (isLoadingMe || isLoadingRoles) {
         return (
@@ -146,6 +166,13 @@ export const UpdateRolePage = () => {
                                         }
                                     )}
                                 </span>
+                                {!isSuperuser && (
+                                    <span className={styles.fieldHint}>
+                                        {i18n.t(
+                                            'Only roles whose authorities you hold yourself are listed.'
+                                        )}
+                                    </span>
+                                )}
                                 <Transfer
                                     options={candidateRoles.map((role) => ({
                                         label: role.displayName,
@@ -177,9 +204,13 @@ export const UpdateRolePage = () => {
                         </>
                     ) : (
                         <p className={styles.emptyText}>
-                            {i18n.t(
-                                'This role can already manage all other user roles.'
-                            )}
+                            {hasRolesBeyondReach
+                                ? i18n.t(
+                                      'There are no further roles you can add to this role. You can only add roles whose authorities you hold yourself.'
+                                  )
+                                : i18n.t(
+                                      'This role can already manage all other user roles.'
+                                  )}
                         </p>
                     )}
                 </>

@@ -17,7 +17,12 @@ import { useCreateUserRole } from '@/hooks/useCreateUserRole'
 import { useCurrentUserAuthorities } from '@/hooks/useCurrentUserAuthorities'
 import { useSystemAuthorities } from '@/hooks/useSystemAuthorities'
 import { useUserRoles } from '@/hooks/useUserRoles'
-import { canManageRole, SystemAuthority, UserRole } from '@/types/userRole'
+import {
+    canGrantAuthority,
+    canManageRole,
+    SystemAuthority,
+    UserRole,
+} from '@/types/userRole'
 
 /** Authorities most user administrator roles need, preselected for convenience */
 const DEFAULT_AUTHORITIES = [
@@ -54,10 +59,12 @@ const CreateRoleForm = ({
     manageableRoles,
     systemAuthorities,
     canAddUserRoles,
+    isSuperuser,
 }: {
     manageableRoles: UserRole[]
     systemAuthorities: SystemAuthority[]
     canAddUserRoles: boolean
+    isSuperuser: boolean
 }) => {
     const schema = useMemo(buildSchema, [])
     const { control, handleSubmit, reset } = useForm<FormValues>({
@@ -162,6 +169,13 @@ const CreateRoleForm = ({
                         <span className={styles.fieldLabel}>
                             {i18n.t('Additional authorities')}
                         </span>
+                        {!isSuperuser && (
+                            <span className={styles.fieldHint}>
+                                {i18n.t(
+                                    'Only authorities you hold yourself are listed.'
+                                )}
+                            </span>
+                        )}
                         <Transfer
                             options={authorityOptions}
                             selected={field.value}
@@ -193,6 +207,7 @@ export const CreateRolePage = () => {
     const {
         authorities: myAuthorities,
         canAddUserRoles,
+        isSuperuser,
         isLoading: isLoadingMe,
         error: meError,
     } = useCurrentUserAuthorities()
@@ -226,6 +241,11 @@ export const CreateRolePage = () => {
     const manageableRoles = userRoles.filter((role) =>
         canManageRole(myAuthorities, role)
     )
+    // A user must not be able to grant authorities they do not hold
+    // themselves, so the picker only offers their own authorities.
+    const grantableAuthorities = systemAuthorities.filter((authority) =>
+        canGrantAuthority(myAuthorities, authority.id)
+    )
 
     return (
         <div className={styles.card}>
@@ -241,8 +261,9 @@ export const CreateRolePage = () => {
             <AddRolesWarning canAddUserRoles={canAddUserRoles} />
             <CreateRoleForm
                 manageableRoles={manageableRoles}
-                systemAuthorities={systemAuthorities}
+                systemAuthorities={grantableAuthorities}
                 canAddUserRoles={canAddUserRoles}
+                isSuperuser={isSuperuser}
             />
         </div>
     )

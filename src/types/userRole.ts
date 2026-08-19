@@ -31,3 +31,14 @@ export const canManageRole = (
     }
     return roleAuthorities.every((authority) => heldAuthorities.has(authority))
 }
+
+/**
+ * Whether a user holding `heldAuthorities` may grant `authorityId` — a
+ * superuser (holder of `ALL`) implicitly holds every authority. Used to
+ * limit the authority picker to the current user's own authorities.
+ */
+export const canGrantAuthority = (
+    heldAuthorities: ReadonlySet<string>,
+    authorityId: string
+): boolean =>
+    heldAuthorities.has(AUTHORITY_ALL) || heldAuthorities.has(authorityId)

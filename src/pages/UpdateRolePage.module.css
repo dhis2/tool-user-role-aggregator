@@ -28,6 +28,14 @@
     color: var(--colors-grey900);
 }
 
+.fieldHint {
+    display: block;
+    margin-block-start: calc(-1 * var(--spacers-dp4));
+    margin-block-end: var(--spacers-dp8);
+    font-size: 13px;
+    color: var(--colors-grey700);
+}
+
 .roleSelect {
     max-inline-size: 400px;
 }

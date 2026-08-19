@@ -1,4 +1,9 @@
-import { AUTHORITY_ALL, canManageRole, UserRole } from './userRole'
+import {
+    AUTHORITY_ALL,
+    canGrantAuthority,
+    canManageRole,
+    UserRole,
+} from './userRole'
 
 const role = (authorities?: string[]): UserRole => ({
     id: 'r1',
@@ -35,5 +40,23 @@ describe('canManageRole', () => {
         const held = new Set<string>()
         expect(canManageRole(held, role(undefined))).toBe(true)
         expect(canManageRole(held, role([]))).toBe(true)
+    })
+})
+
+describe('canGrantAuthority', () => {
+    it('lets a superuser (ALL) grant any authority', () => {
+        const held = new Set([AUTHORITY_ALL])
+        expect(canGrantAuthority(held, 'F_ANYTHING')).toBe(true)
+        expect(canGrantAuthority(held, AUTHORITY_ALL)).toBe(true)
+    })
+
+    it('lets a user grant an authority they hold', () => {
+        expect(canGrantAuthority(new Set(['F_A', 'F_B']), 'F_A')).toBe(true)
+    })
+
+    it('rejects an authority the user does not hold', () => {
+        expect(canGrantAuthority(new Set(['F_A']), 'F_B')).toBe(false)
+        expect(canGrantAuthority(new Set(['F_A']), AUTHORITY_ALL)).toBe(false)
+        expect(canGrantAuthority(new Set<string>(), 'F_A')).toBe(false)
     })
 })
