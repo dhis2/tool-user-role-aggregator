@@ -6,19 +6,22 @@ Unit tests live next to the code in `src/` (`pnpm test`); this folder holds only
 
 ## What the suite does
 
-`suite.py` installs the production bundle (`build/bundle/*.zip`) into the target instance via `POST /api/apps`, then drives both app flows in Chromium and verifies every mutation through the API:
+`suite.py` installs the production bundle (`build/bundle/*.zip`) into the target instance via `POST /api/apps`, then drives the app flows in Chromium and verifies every mutation through the API:
 
-- create page renders, transfers populated, default authorities preselected
+- check page renders (the app's default route), then create page renders, transfers populated, default authorities preselected
 - form validation blocks an empty submit
 - create role → API-verified aggregated authorities
-- update page: managed-roles list, add authorities from another role → API-verified merge, owner fields preserved
-- cache invalidation (managed list refreshes without reload)
+- the created role's persisted `description` contains no HTML-entity artifact (regression check for a fixed i18next-escaping defect that could turn `/` into `&#x2F;`)
+- update page: add authorities from another role → API-verified merge, owner fields preserved
+- the Check page's `can-manage-list` shows the created role can manage `Data entry clerk`, and after the update it also shows the newly-added role — read there without a page reload, which is what proves cache invalidation (the manageability analysis lives on the Check page, not the Update page)
 - console / page-error / failed-request / HTTP ≥ 400 capture throughout
 - created roles are deleted afterwards
 
+Loading the app for the very first time with a route hash already in the URL (e.g. `.../index.html#/create`) is unreliable — the DHIS2 App Platform shell ignores that initial hash and lands on the default route regardless — so `suite.py` never `goto`s a hash route directly. It loads the app root, waits for it to mount, then navigates in-app by clicking sidebar links (`Create new role`, `Update existing role`, `Role combination`). A hash navigation only works reliably as a _second_ navigation, once the app has already mounted once.
+
 `extra_tests.py` checks URL sync inside the global shell (skipped below DHIS2 2.42, where no global shell exists) and the missing-permissions behavior for a non-privileged user (creates and deletes a test user).
 
-`nonsuperuser_test.py` drives the app as a user who may manage roles but is not a superuser: it creates a role holding only user-management authorities plus the app authority, a user holding that role, and verifies that "user roles to manage" lists exactly the roles `canManageRole()` allows and that the create flow works for that user. Its admin user must be a superuser — DHIS2 refuses to grant a role carrying authorities the acting user lacks, which the demo `admin` does not satisfy on every seed, so it defaults to `local_admin`.
+`nonsuperuser_test.py` drives the app as a user who may manage roles but is not a superuser: it creates a role holding only user-management authorities plus the app authority, a user holding that role, and verifies that "user roles to manage" lists exactly the roles `canManageRole()` allows, that the create flow works for that user, and that the Check page's role-combination verdict for two demo roles matches an API-computed expectation. Its admin user must be a superuser — DHIS2 refuses to grant a role carrying authorities the acting user lacks, which the demo `admin` does not satisfy on every seed, so it defaults to `local_admin`. It also drives a second, read-only user (app access but no role-management authority): the write nav items (`Create new role`, `Update existing role`) must be absent, the check nav item must be present, and direct navigation to `#/create` must render the authority-guard notice — those pages are gated off entirely rather than rendered with disabled controls.
 
 ## Requirements
 

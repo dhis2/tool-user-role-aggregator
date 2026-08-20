@@ -58,10 +58,24 @@ DEFAULT_AUTHORITIES = {"F_USER_ADD", "F_USER_DELETE", "F_USER_VIEW", "M_dhis-web
 AUTHORITY_ALL = "ALL"
 
 CREATE_HEADING = "Create new user admin role"
-PERMISSION_WARNING = "You do not have permission to create or update user roles"
+CHECK_HEADING = "Check what a role combination can manage"
+LOOKUP_HEADING = "Look up a user"
+GUARD_TEXT = "This page needs one of these authorities"
+NAV_CREATE = "Create new role"
+NAV_UPDATE = "Update existing role"
+NAV_CHECK = "Role combination"
+NAV_LOOKUP = "Look up user"
 TRANSFER = '[data-test="dhis2-uicore-transfer"]'
 TRANSFER_OPTION = '[data-test="dhis2-uicore-transferoption"]'
+CAN_MANAGE_LIST = '[data-test="can-manage-list"] li'
+CANNOT_MANAGE_LIST = '[data-test="cannot-manage-list"] li'
 ALERTBAR = '[data-test="dhis2-uicore-alertbar"]'
+LOADER = '[data-test="dhis2-uicore-circularloader"]'
+# The search field's placeholder, from CheckUserPage's MIN_QUERY_LENGTH (2).
+SEARCH_PLACEHOLDER = "At least 2 characters"
+# Authorities that let a role administer users at all — mirrors
+# canAdministerUsers() in src/domain/userRole.ts.
+USER_ADMIN_AUTHORITIES = {"ALL", "F_USER_ADD", "F_USER_ADD_WITHIN_MANAGED_GROUP"}
 
 OUT = Path(__file__).parent / "output" / "nonsuperuser"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -123,8 +137,24 @@ def app_frame(page):
     return page.main_frame
 
 
+def wait_for_heading(page, heading, timeout_s=10):
+    """Poll app_frame(page) fresh on every attempt: the global shell can
+    swap the app iframe for a new frame instance shortly after an in-app
+    navigation, and a locator built from a captured-then-stale frame would
+    otherwise wait out the full timeout even though the heading is already
+    visible in the new frame."""
+    deadline = time.monotonic() + timeout_s
+    frame = app_frame(page)
+    while time.monotonic() < deadline:
+        frame = app_frame(page)
+        if frame.locator("h1", has_text=heading).count() > 0:
+            return frame
+        page.wait_for_timeout(300)
+    raise PlaywrightTimeoutError(f'heading "{heading}" never appeared (url={frame.url})')
+
+
 def expected_manageable_roles(held):
-    """The roles the app should offer, per canManageRole() in src/types/userRole.ts."""
+    """The roles the app should offer, per canManageRole() in src/domain/userRole.ts."""
     _, res = api("GET", "/api/userRoles?fields=id,displayName,authorities&paging=false")
     manageable = []
     for role in res.get("userRoles", []):
@@ -134,6 +164,51 @@ def expected_manageable_roles(held):
         if all(a in held for a in authorities):
             manageable.append(role["displayName"])
     return sorted(manageable)
+
+
+def find_no_admin_role():
+    """A role holding none of the user-administration authorities, so the
+    Check page's "cannot administer users" branch actually gets exercised.
+    Discovered from the API rather than hardcoded: a fixed pair like
+    ["User manager", "M and E Officer"] never reaches that branch (User
+    manager carries F_USER_ADD), and this suite must also run against demo
+    seeds (e.g. Laos) where Sierra Leone's role names don't exist."""
+    _, res = api("GET", "/api/userRoles?fields=id,displayName,authorities&paging=false")
+    for role in res.get("userRoles", []):
+        authorities = set(role.get("authorities") or [])
+        if not authorities & USER_ADMIN_AUTHORITIES:
+            return role["displayName"]
+    return None
+
+
+def find_admin_capable_pair():
+    """Two roles to check together, at least one carrying a user-administration
+    authority so the combination can actually manage somebody. Discovered, not
+    named: Sierra Leone has "User manager"/"M and E Officer", Laos has
+    "Admin"/"Analytics"/"Data capture", and a hard-coded pair fails on the
+    other seed with a KeyError."""
+    _, res = api("GET", "/api/userRoles?fields=id,displayName,authorities&paging=false")
+    roles = [r for r in res.get("userRoles", [])
+             if "ALL" not in (r.get("authorities") or [])]
+    admin = next((r for r in roles
+                  if set(r.get("authorities") or []) & USER_ADMIN_AUTHORITIES), None)
+    if not admin:
+        return []
+    other = next((r for r in roles
+                  if r["displayName"] != admin["displayName"]
+                  and (r.get("authorities") or [])), None)
+    return [admin["displayName"]] + ([other["displayName"]] if other else [])
+
+
+def find_lookup_user():
+    """A real user's display name, for the user-lookup flow. Not hardcoded,
+    for the same seed-portability reason as find_no_admin_role()."""
+    _, res = api("GET", "/api/users?fields=id,displayName&pageSize=50")
+    for user in res.get("users", []):
+        name = (user.get("displayName") or "").strip()
+        if len(name) >= 3:
+            return name
+    return None
 
 
 def create_role(name, authorities):
@@ -170,12 +245,14 @@ def open_app_as(page, username, password):
     page.goto(f"{BASE}/api/apps/{APP_KEY}/index.html", wait_until="domcontentloaded")
     # On 2.42+ the app renders inside the global-shell iframe, which appears
     # some time after domcontentloaded — poll for the frame and its heading
-    # rather than guessing a fixed delay.
+    # rather than guessing a fixed delay. The app now lands on the Check
+    # page ("/") by default for anyone who can open it, regardless of
+    # role-management authority.
     deadline = time.monotonic() + 30
     while time.monotonic() < deadline:
         frame = app_frame(page)
         try:
-            frame.locator("h1", has_text=CREATE_HEADING).wait_for(timeout=2000)
+            frame.locator("h1", has_text=CHECK_HEADING).wait_for(timeout=2000)
             rec("App loads for non-superuser with app access", "PASS")
             return frame
         except PlaywrightTimeoutError:
@@ -189,8 +266,11 @@ def open_app_as(page, username, password):
 
 
 def check_manageable_roles(frame, held):
-    warned = frame.get_by_text(PERMISSION_WARNING).count() > 0
-    rec("No missing-permission warning", "PASS" if not warned else "FAIL")
+    # The manager holds a create/update authority, so the route guard must
+    # not be showing — GUARD_TEXT is what would actually appear if this
+    # user were wrongly gated off the Create page.
+    guarded = frame.get_by_text(GUARD_TEXT).count() > 0
+    rec("No missing-permission warning", "PASS" if not guarded else "FAIL")
     shown = sorted(
         text.strip()
         for text in frame.locator(TRANSFER).nth(0).locator(TRANSFER_OPTION).all_inner_texts()
@@ -224,17 +304,116 @@ def create_role_as_tester(page, frame, role_name):
 
 
 def check_read_only_user(frame):
-    warned = frame.get_by_text(PERMISSION_WARNING).count() > 0
-    rec("Read-only user sees the missing-permission warning", "PASS" if warned else "FAIL")
-    button = frame.locator("button", has_text="Create role")
-    disabled = button.count() > 0 and button.first.get_attribute("disabled") is not None
-    rec("Read-only user cannot submit (Create button disabled)", "PASS" if disabled else "FAIL",
-        f"buttons={button.count()}")
+    """The write pages are gated off entirely for a user without
+    role-management authority: no create/update nav, no page to render even
+    on direct navigation to the route."""
+    create_visible = frame.get_by_text(NAV_CREATE).count() > 0
+    update_visible = frame.get_by_text(NAV_UPDATE).count() > 0
+    rec("Read-only user: no create/update nav", "PASS" if not create_visible and not update_visible else "FAIL",
+        f"create_visible={create_visible} update_visible={update_visible}")
+    check_visible = frame.get_by_text(NAV_CHECK).count() > 0
+    rec("Read-only user: check section available", "PASS" if check_visible else "FAIL")
+
+    # Direct navigation to the guarded route: per the app's own navigation
+    # rule, a hash is only honored on a *second* navigation — the shell
+    # ignores it on the very first load — so land on the root first.
+    page = frame.page
+    page.goto(f"{BASE}/api/apps/{APP_KEY}/index.html", wait_until="domcontentloaded")
+    wait_for_heading(page, CHECK_HEADING, timeout_s=15)
+    page.goto(f"{BASE}/api/apps/{APP_KEY}/index.html#/create", wait_until="domcontentloaded")
+    page.wait_for_timeout(3000)
+    guarded = app_frame(page).get_by_text(GUARD_TEXT).count() > 0
+    rec("Read-only user: /create is guarded", "PASS" if guarded else "FAIL")
 
 
 def browser_page(p):
     context = p.chromium.launch().new_context(viewport={"width": 1400, "height": 1000})
     return context.new_page()
+
+
+def check_role_combination(page, frame, role_names):
+    """Select roles on the Check page and compare the verdict with the API."""
+    _, res = api("GET", "/api/userRoles?fields=id,displayName,authorities&paging=false")
+    roles = res["userRoles"]
+    by_name = {r["displayName"]: r for r in roles}
+    held = set()
+    for name in role_names:
+        held |= set(by_name[name].get("authorities") or [])
+    can_administer = bool(held & USER_ADMIN_AUTHORITIES)
+    expected = sorted(
+        r["displayName"]
+        for r in roles
+        if "ALL" not in (r.get("authorities") or [])
+        and all(a in held for a in (r.get("authorities") or []))
+    ) if can_administer else []
+
+    frame.locator("a", has_text=NAV_CHECK).click()
+    frame = wait_for_heading(page, CHECK_HEADING, timeout_s=10)
+    transfer = frame.locator(TRANSFER).first
+    for name in role_names:
+        transfer.locator(
+            '[data-test="dhis2-uicore-transfer-filter"] input'
+        ).first.fill(name)
+        page.wait_for_timeout(400)
+        options = [t.strip() for t in transfer.locator(TRANSFER_OPTION).all_inner_texts()]
+        index = next(i for i, t in enumerate(options) if name in t)
+        transfer.locator(TRANSFER_OPTION).nth(index).dblclick()
+        page.wait_for_timeout(400)
+
+    if not can_administer:
+        shown = frame.get_by_text("Cannot administer users").count() > 0
+        no_lists = (
+            frame.locator(CAN_MANAGE_LIST).count() == 0
+            and frame.locator(CANNOT_MANAGE_LIST).count() == 0
+        )
+        rec("Check page: combination without user-admin authority",
+            "PASS" if shown and no_lists else "FAIL",
+            f"notice_shown={shown} no_lists={no_lists}")
+        return
+
+    listed = sorted(t.strip() for t in frame.locator(CAN_MANAGE_LIST).all_inner_texts())
+    rec("Check page: can-manage list matches the API", "PASS" if listed == expected else "FAIL",
+        f"shown={listed[:5]} expected={expected[:5]}")
+
+
+def check_user_lookup(page, frame):
+    """Navigate in-app to "Look up user" and search for a real, seed-agnostic
+    user. Also the regression check for the infinite-spinner/stale-results
+    bug (a disabled TanStack Query keeps status 'loading'): no loader should
+    be visible before anything is typed."""
+    frame.locator("a", has_text=NAV_LOOKUP).click()
+    frame = wait_for_heading(page, LOOKUP_HEADING, timeout_s=10)
+
+    loader_before = frame.locator(LOADER).count() > 0
+    rec("User lookup: no loader before typing", "PASS" if not loader_before else "FAIL")
+
+    name = find_lookup_user()
+    if not name:
+        rec("User lookup: search and select a user", "SKIP",
+            "no user with a usable display name found on this seed")
+        return
+    fragment = name[: max(3, len(name) // 2)].strip() or name
+
+    frame.get_by_placeholder(SEARCH_PLACEHOLDER).fill(fragment)
+    page.wait_for_timeout(700)  # debounce (300ms) plus the search request
+
+    results = frame.locator("button", has_text=fragment)
+    try:
+        results.first.wait_for(timeout=10000)
+    except PlaywrightTimeoutError:
+        rec("User lookup: search and select a user", "FAIL",
+            f"no result for fragment {fragment!r} of {name!r}")
+        return
+    results.first.click()
+    page.wait_for_timeout(500)
+
+    report_shown = (
+        frame.get_by_text("Can administer users", exact=False).count() > 0
+        or frame.get_by_text("Cannot administer users").count() > 0
+        or frame.locator(CAN_MANAGE_LIST).count() > 0
+        or frame.locator(CANNOT_MANAGE_LIST).count() > 0
+    )
+    rec("User lookup: report renders for selected user", "PASS" if report_shown else "FAIL")
 
 
 def drive_app(username, password, role_name):
@@ -248,9 +427,52 @@ def drive_app(username, password, role_name):
             if not frame:
                 page.screenshot(path=str(OUT / "nonsuperuser-blocked.png"), full_page=True)
                 return None
+            frame.locator("a", has_text=NAV_CREATE).click()
+            try:
+                frame = wait_for_heading(page, CREATE_HEADING, timeout_s=10)
+            except PlaywrightTimeoutError as e:
+                rec("Manager can navigate to Create page", "FAIL", str(e)[:150])
+                return None
             check_manageable_roles(frame, set(TESTER_AUTHORITIES))
             page.screenshot(path=str(OUT / "nonsuperuser-create-page.png"), full_page=True)
-            return create_role_as_tester(page, frame, role_name)
+            # Capture the uid before the role-combination check: that check
+            # navigates away and drives another Transfer, and if it raises
+            # (a frame-race timeout, or a role name not found in the
+            # picker), the already-created role must still make it back to
+            # the caller's cleanup rather than being silently leaked.
+            new_role_uid = create_role_as_tester(page, frame, role_name)
+            admin_pair = find_admin_capable_pair()
+            if not admin_pair:
+                # Passing [] would select nothing, so the Check page would
+                # show its default "no roles selected" state and the
+                # no-user-admin branch below would record a PASS for a
+                # scenario that was never exercised.
+                rec("Check page: role-combination check", "SKIP",
+                    "no non-ALL role on this instance carries a user-administration authority")
+            else:
+                try:
+                    check_role_combination(page, app_frame(page), admin_pair)
+                except Exception as e:
+                    rec("Check page: role-combination check", "FAIL",
+                        f"raised {type(e).__name__}: {str(e)[:150]}")
+
+            no_admin_role = find_no_admin_role()
+            if no_admin_role:
+                try:
+                    check_role_combination(page, app_frame(page), [no_admin_role])
+                except Exception as e:
+                    rec("Check page: no-admin role-combination check", "FAIL",
+                        f"raised {type(e).__name__}: {str(e)[:150]}")
+            else:
+                rec("Check page: no-admin role-combination check", "SKIP",
+                    "no role without a user-administration authority exists on this seed")
+
+            try:
+                check_user_lookup(page, app_frame(page))
+            except Exception as e:
+                rec("User lookup flow", "FAIL", f"raised {type(e).__name__}: {str(e)[:150]}")
+
+            return new_role_uid
         finally:
             rec("No page errors", "PASS" if not errors else "FAIL", "; ".join(errors)[:150])
             page.context.browser.close()

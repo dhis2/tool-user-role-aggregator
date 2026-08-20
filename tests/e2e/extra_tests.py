@@ -9,8 +9,10 @@ DHIS2_ADMIN_USER defaults to "admin"; broker/demo instances use the standard dem
 import base64
 import json
 import os
+import re
 import secrets
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -30,6 +32,8 @@ LIMITED_USERNAME = "agent_review_limited"
 LIMITED_PASSWORD = "Xy7!" + secrets.token_hex(8)
 # The DHIS2 app key equals the app name in package.json / d2.config.js
 APP_KEY = json.loads((Path(__file__).parents[2] / "package.json").read_text())["name"]
+# DHIS2 derives an app's access authority from its key, minus non-alphanumerics
+APP_AUTHORITY = "M_" + re.sub(r"[^A-Za-z0-9]", "", APP_KEY)
 OUT = Path(__file__).parent / "output" / "extra-tests"
 OUT.mkdir(parents=True, exist_ok=True)
 results = []
@@ -105,8 +109,15 @@ def test_url_sync(p):
     page.on("pageerror", lambda e: errors.append(str(e)))
     # global shell path on 2.42+
     page.goto(f"{BASE}/apps/{APP_KEY}", wait_until="domcontentloaded")
-    page.wait_for_timeout(4000)
+    # The global-shell iframe mounts some time after domcontentloaded — poll
+    # for the app's nav rather than guessing a fixed delay, which was flaky.
+    deadline = time.monotonic() + 20
     f = app_frame(page)
+    while time.monotonic() < deadline:
+        f = app_frame(page)
+        if f.get_by_text("Update existing role").count() > 0:
+            break
+        page.wait_for_timeout(300)
     in_shell = f != page.main_frame
     rec("Global shell wraps app in iframe", "PASS" if in_shell else "WARN", f"frames={len(page.frames)}")
     f.locator("a", has_text="Update existing role").click()
@@ -124,9 +135,19 @@ def test_url_sync(p):
 
 
 def test_nonprivileged(p):
-    # find Data entry clerk role id
-    st, roles = api("GET", "/api/userRoles?filter=name:eq:Data entry clerk&fields=id".replace(" ", "%20"))
-    clerk_id = roles["userRoles"][0]["id"]
+    # A role carrying no app access and no user administration, so the user
+    # holding it must not be able to open the app at all. Discovered rather
+    # than named ("Data entry clerk" exists only on the Sierra Leone seeds;
+    # this script also runs against Laos).
+    st, roles = api("GET", "/api/userRoles?fields=id,displayName,authorities&paging=false")
+    blocked = [
+        r for r in roles.get("userRoles", [])
+        if not (set(r.get("authorities") or []) & {"ALL", APP_AUTHORITY})
+    ]
+    if not blocked:
+        rec("Find a role without app access", "SKIP", "every role on this instance can open the app")
+        return None
+    clerk_id = blocked[0]["id"]
     # find an org unit
     st, ous = api("GET", "/api/organisationUnits?level=1&fields=id&pageSize=1")
     ou = ous["organisationUnits"][0]["id"]
@@ -159,15 +180,19 @@ def test_nonprivileged(p):
     page.wait_for_timeout(5000)
     f = app_frame(page)
     page.screenshot(path=str(OUT / "limited-user.png"), full_page=True)
-    loaded = f.locator("h1", has_text="Create new user admin role").count() > 0
-    rec("App loads for limited user", "PASS" if loaded else "WARN",
-        "app did not render (may lack app access authority)" if not loaded else "")
-    if loaded:
-        warned = f.get_by_text("You do not have permission to create or update user roles").count() > 0
-        rec("Missing-permission warning shown", "PASS" if warned else "FAIL")
-        btn = f.locator("button", has_text="Create role")
-        disabled = btn.get_attribute("disabled") is not None
-        rec("Create button disabled for limited user", "PASS" if disabled else "FAIL")
+    # The limited user holds only "Data entry clerk" and so lacks the app's
+    # own access authority — DHIS2 must refuse to serve the app UI at all.
+    # Check both known landing headings (version-agnostic: 2.40/2.41 serve
+    # the app at top level, 2.42+ inside the global shell) rather than the
+    # shell's exact error copy, so this does not rot the next time the
+    # default route changes.
+    rendered = (
+        f.locator("h1", has_text="Check what a role combination can manage").count() > 0
+        or f.locator("h1", has_text="Create new user admin role").count() > 0
+    )
+    rec("App does not render for a user without app access",
+        "PASS" if not rendered else "FAIL",
+        "" if not rendered else "app UI rendered despite missing app-access authority")
     b.close()
     return uid
 
