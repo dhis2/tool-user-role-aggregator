@@ -73,7 +73,7 @@ export const missingAuthorities = (
     }
     return (role.authorities ?? [])
         .filter((authority) => !heldAuthorities.has(authority))
-        .sort()
+        .sort((a, b) => a.localeCompare(b))
 }
 
 export interface BlockedRole {

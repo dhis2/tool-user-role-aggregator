@@ -11,6 +11,20 @@ import { AUTHORITY_ALL, SystemAuthority, UserRole } from '@/types/userRole'
 
 const MISSING_PREVIEW_COUNT = 5
 
+/**
+ * Which authority lets this set administer users, for the verdict line.
+ * Only meaningful when the set can administer users at all.
+ */
+const administeringAuthority = (authorities: ReadonlySet<string>): string => {
+    if (authorities.has(AUTHORITY_ALL)) {
+        return AUTHORITY_ALL
+    }
+    if (authorities.has(AUTHORITY_USER_ADD)) {
+        return AUTHORITY_USER_ADD
+    }
+    return AUTHORITY_USER_ADD_IN_GROUP
+}
+
 interface ManageabilityReportProps {
     /** The subject's combined authorities. */
     authorities: ReadonlySet<string>
@@ -60,11 +74,7 @@ export const ManageabilityReport = ({
         return (id: string) => names.get(id) ?? id
     }, [systemAuthorities])
 
-    const grantedBy = authorities.has(AUTHORITY_ALL)
-        ? AUTHORITY_ALL
-        : authorities.has(AUTHORITY_USER_ADD)
-          ? AUTHORITY_USER_ADD
-          : AUTHORITY_USER_ADD_IN_GROUP
+    const grantedBy = administeringAuthority(authorities)
 
     return (
         <div className={styles.report}>

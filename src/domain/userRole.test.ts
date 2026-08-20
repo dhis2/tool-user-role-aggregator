@@ -72,7 +72,11 @@ describe('aggregateAuthorities', () => {
             role(['F_A', 'F_B']),
             role(['F_B', 'F_C']),
         ])
-        expect([...result].sort()).toEqual(['F_A', 'F_B', 'F_C'])
+        expect([...result].sort((a, b) => a.localeCompare(b))).toEqual([
+            'F_A',
+            'F_B',
+            'F_C',
+        ])
     })
 
     it('ignores roles without authorities', () => {

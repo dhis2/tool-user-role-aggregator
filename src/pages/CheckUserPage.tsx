@@ -89,7 +89,7 @@ export const CheckUserPage = () => {
 
             {!selectedUser && isSearching && <CircularLoader />}
 
-            {!selectedUser && users && users.length === 0 && (
+            {!selectedUser && users?.length === 0 && (
                 <p className={styles.emptyText}>
                     {i18n.t('No users match that search.')}
                 </p>

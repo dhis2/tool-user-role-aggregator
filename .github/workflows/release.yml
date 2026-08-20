@@ -31,7 +31,10 @@ jobs:
                   fi
 
             - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+              # --ignore-scripts: dependency lifecycle scripts are not needed
+              # to build this app (verified: identical bundle assets without
+              # them) and running them would execute third-party code in CI.
+              run: pnpm install --frozen-lockfile --ignore-scripts
 
             - name: Build
               run: pnpm run build
