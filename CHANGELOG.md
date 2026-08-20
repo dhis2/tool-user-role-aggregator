@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 - Role and authority pickers now use the DHIS2 Transfer component with filtering.
 - The "Update" page validates the selected role automatically — no separate "Validate Role" button.
 - User-facing strings are translatable via `@dhis2/d2-i18n`.
+- The app now has three sections: "Check access" for read-only inspection, plus "Create new role" and "Update existing role", which are shown only to users who may manage user roles.
+- Access checks evaluate a combination of roles rather than one role at a time, because a user administers others with the authorities of all their roles combined. A combination that grants no user-administration authority is now reported as such instead of listing roles it cannot really manage.
+- A user can be looked up by name to see which roles they can manage, and which authorities are missing for the ones they cannot.
+- The landing page is now the access check; role creation moved to `#/create`.
 
 ### Fixed
 
