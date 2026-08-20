@@ -9,20 +9,19 @@ import {
 } from '@dhis2/ui'
 import { zodResolver } from '@hookform/resolvers/zod'
 import React, { useMemo } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import styles from './CreateRolePage.module.css'
-import { AddRolesWarning } from '@/components/AddRolesWarning'
+import {
+    canAdministerUsers,
+    canGrantAuthority,
+    canManageRole,
+} from '@/domain/userRole'
 import { useCreateUserRole } from '@/hooks/useCreateUserRole'
 import { useCurrentUserAuthorities } from '@/hooks/useCurrentUserAuthorities'
 import { useSystemAuthorities } from '@/hooks/useSystemAuthorities'
 import { useUserRoles } from '@/hooks/useUserRoles'
-import {
-    canGrantAuthority,
-    canManageRole,
-    SystemAuthority,
-    UserRole,
-} from '@/types/userRole'
+import { SystemAuthority, UserRole } from '@/types/userRole'
 
 /** Authorities most user administrator roles need, preselected for convenience */
 const DEFAULT_AUTHORITIES = [
@@ -58,12 +57,10 @@ type FormValues = z.infer<ReturnType<typeof buildSchema>>
 const CreateRoleForm = ({
     manageableRoles,
     systemAuthorities,
-    canAddUserRoles,
     isSuperuser,
 }: {
     manageableRoles: UserRole[]
     systemAuthorities: SystemAuthority[]
-    canAddUserRoles: boolean
     isSuperuser: boolean
 }) => {
     const schema = useMemo(buildSchema, [])
@@ -82,6 +79,19 @@ const CreateRoleForm = ({
         onSuccess: () => reset(),
     })
 
+    const watchedRoles = useWatch({ control, name: 'rolesToManage' })
+    const watchedAuthorities = useWatch({
+        control,
+        name: 'additionalAuthorities',
+    })
+    const resultingAuthorities = useMemo(() => {
+        const fromRoles = manageableRoles
+            .filter((role) => (watchedRoles ?? []).includes(role.id))
+            .flatMap((role) => role.authorities ?? [])
+        return new Set([...(watchedAuthorities ?? []), ...fromRoles])
+    }, [manageableRoles, watchedRoles, watchedAuthorities])
+    const willAdministerUsers = canAdministerUsers(resultingAuthorities)
+
     const onSubmit = (values: FormValues) => {
         const selectedRoles = manageableRoles.filter((role) =>
             values.rolesToManage.includes(role.id)
@@ -96,6 +106,7 @@ const CreateRoleForm = ({
                         .map((role) => role.displayName)
                         .join(', '),
                     nsSeparator: '###',
+                    interpolation: { escapeValue: false },
                 }
             ),
             roleIdsToManage: values.rolesToManage,
@@ -189,12 +200,25 @@ const CreateRoleForm = ({
                     </div>
                 )}
             />
+            {resultingAuthorities.size > 0 && !willAdministerUsers && (
+                <div className={styles.field}>
+                    <NoticeBox
+                        warning
+                        title={i18n.t('This role cannot administer users')}
+                    >
+                        {i18n.t(
+                            'None of the selected roles or authorities grants Add/Update User, so members of this role will not be able to manage other users.',
+                            { nsSeparator: '###' }
+                        )}
+                    </NoticeBox>
+                </div>
+            )}
             <ButtonStrip>
                 <Button
                     type="submit"
                     primary
                     loading={isCreating}
-                    disabled={!canAddUserRoles || isCreating}
+                    disabled={isCreating}
                 >
                     {i18n.t('Create role')}
                 </Button>
@@ -206,7 +230,6 @@ const CreateRoleForm = ({
 export const CreateRolePage = () => {
     const {
         authorities: myAuthorities,
-        canAddUserRoles,
         isSuperuser,
         isLoading: isLoadingMe,
         error: meError,
@@ -258,11 +281,9 @@ export const CreateRolePage = () => {
                     { nsSeparator: '###' }
                 )}
             </p>
-            <AddRolesWarning canAddUserRoles={canAddUserRoles} />
             <CreateRoleForm
                 manageableRoles={manageableRoles}
                 systemAuthorities={grantableAuthorities}
-                canAddUserRoles={canAddUserRoles}
                 isSuperuser={isSuperuser}
             />
         </div>

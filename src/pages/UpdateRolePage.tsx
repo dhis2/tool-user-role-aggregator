@@ -9,17 +9,16 @@ import {
     Transfer,
 } from '@dhis2/ui'
 import React, { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import styles from './UpdateRolePage.module.css'
-import { AddRolesWarning } from '@/components/AddRolesWarning'
+import { canManageRole } from '@/domain/userRole'
 import { useAddAuthoritiesToRole } from '@/hooks/useAddAuthoritiesToRole'
 import { useCurrentUserAuthorities } from '@/hooks/useCurrentUserAuthorities'
 import { useUserRoles } from '@/hooks/useUserRoles'
-import { canManageRole } from '@/types/userRole'
 
 export const UpdateRolePage = () => {
     const {
         authorities: myAuthorities,
-        canAddUserRoles,
         isSuperuser,
         isLoading: isLoadingMe,
         error: meError,
@@ -39,41 +38,36 @@ export const UpdateRolePage = () => {
 
     const selectedRole = userRoles?.find((role) => role.id === selectedRoleId)
 
-    const { managedRoles, candidateRoles, hasRolesBeyondReach } =
-        useMemo(() => {
-            if (!userRoles || !selectedRole) {
-                return {
-                    managedRoles: [],
-                    candidateRoles: [],
-                    hasRolesBeyondReach: false,
-                }
-            }
-            const heldAuthorities = new Set(selectedRole.authorities ?? [])
-            const otherRoles = userRoles.filter(
-                (role) => role.id !== selectedRole.id
-            )
+    const { candidateRoles, hasRolesBeyondReach } = useMemo(() => {
+        if (!userRoles || !selectedRole) {
             return {
-                managedRoles: otherRoles.filter((role) =>
-                    canManageRole(heldAuthorities, role)
-                ),
-                // Only roles the signed-in user could manage themselves: their
-                // authorities are a subset of the user's own, so aggregating them
-                // can never grant away an authority the user does not hold.
-                candidateRoles: otherRoles.filter(
-                    (role) =>
-                        !canManageRole(heldAuthorities, role) &&
-                        canManageRole(myAuthorities, role)
-                ),
-                // Roles the selected role cannot manage and that the signed-in
-                // user may not grant either — they are withheld, not absent, so
-                // the empty state must not claim every role is already covered.
-                hasRolesBeyondReach: otherRoles.some(
-                    (role) =>
-                        !canManageRole(heldAuthorities, role) &&
-                        !canManageRole(myAuthorities, role)
-                ),
+                candidateRoles: [],
+                hasRolesBeyondReach: false,
             }
-        }, [userRoles, selectedRole, myAuthorities])
+        }
+        const heldAuthorities = new Set(selectedRole.authorities ?? [])
+        const otherRoles = userRoles.filter(
+            (role) => role.id !== selectedRole.id
+        )
+        return {
+            // Only roles the signed-in user could manage themselves: their
+            // authorities are a subset of the user's own, so aggregating them
+            // can never grant away an authority the user does not hold.
+            candidateRoles: otherRoles.filter(
+                (role) =>
+                    !canManageRole(heldAuthorities, role) &&
+                    canManageRole(myAuthorities, role)
+            ),
+            // Roles the selected role cannot manage and that the signed-in
+            // user may not grant either — they are withheld, not absent, so
+            // the empty state must not claim every role is already covered.
+            hasRolesBeyondReach: otherRoles.some(
+                (role) =>
+                    !canManageRole(heldAuthorities, role) &&
+                    !canManageRole(myAuthorities, role)
+            ),
+        }
+    }, [userRoles, selectedRole, myAuthorities])
 
     if (isLoadingMe || isLoadingRoles) {
         return (
@@ -109,10 +103,16 @@ export const UpdateRolePage = () => {
             </h1>
             <p className={styles.description}>
                 {i18n.t(
-                    'Select an existing role to see which user roles it can currently manage, and extend it with the authorities of additional roles so its members can manage users with those roles as well.'
+                    'Select an existing role and extend it with the authorities of additional roles so its members can manage users with those roles as well. Use "Check what this role can manage" to see which roles it can currently manage.'
                 )}
             </p>
-            <AddRolesWarning canAddUserRoles={canAddUserRoles} />
+            {selectedRole && (
+                <p className={styles.checkLink}>
+                    <Link to={`/?roles=${selectedRole.id}`}>
+                        {i18n.t('Check what this role can manage')}
+                    </Link>
+                </p>
+            )}
             <div className={styles.field}>
                 <SingleSelectField
                     className={styles.roleSelect}
@@ -137,22 +137,6 @@ export const UpdateRolePage = () => {
             {selectedRole && (
                 <>
                     <h2 className={styles.sectionTitle}>
-                        {i18n.t('User roles that can be managed')}
-                    </h2>
-                    {managedRoles.length > 0 ? (
-                        <ul className={styles.managedRolesList}>
-                            {managedRoles.map((role) => (
-                                <li key={role.id}>{role.displayName}</li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className={styles.emptyText}>
-                            {i18n.t(
-                                'This role cannot manage any other user roles yet.'
-                            )}
-                        </p>
-                    )}
-                    <h2 className={styles.sectionTitle}>
                         {i18n.t('Add managed roles')}
                     </h2>
                     {candidateRoles.length > 0 ? (
@@ -163,6 +147,9 @@ export const UpdateRolePage = () => {
                                         'The authorities of the selected roles will be added to {{role}}',
                                         {
                                             role: selectedRole.displayName,
+                                            interpolation: {
+                                                escapeValue: false,
+                                            },
                                         }
                                     )}
                                 </span>
@@ -193,9 +180,7 @@ export const UpdateRolePage = () => {
                                     onClick={onSubmit}
                                     loading={isUpdating}
                                     disabled={
-                                        !canAddUserRoles ||
-                                        isUpdating ||
-                                        roleIdsToAdd.length === 0
+                                        isUpdating || roleIdsToAdd.length === 0
                                     }
                                 >
                                     {i18n.t('Add authorities to role')}
@@ -209,7 +194,7 @@ export const UpdateRolePage = () => {
                                       'There are no further roles you can add to this role. You can only add roles whose authorities you hold yourself.'
                                   )
                                 : i18n.t(
-                                      'This role can already manage all other user roles.'
+                                      'This role already has the authorities of every other user role.'
                                   )}
                         </p>
                     )}

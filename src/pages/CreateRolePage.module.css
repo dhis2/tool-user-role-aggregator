@@ -46,10 +46,6 @@
     max-inline-size: 400px;
 }
 
-.notice {
-    margin-block-end: var(--spacers-dp16);
-}
-
 .loadingContainer {
     display: flex;
     justify-content: center;
