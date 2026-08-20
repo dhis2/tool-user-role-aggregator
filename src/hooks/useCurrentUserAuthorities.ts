@@ -1,4 +1,8 @@
 import { useMemo } from 'react'
+import {
+    AUTHORITY_USER_VIEW,
+    USERROLE_ADD_AUTHORITIES,
+} from '@/domain/userRole'
 import { AUTHORITY_ALL } from '@/types/userRole'
 import { useApiDataQuery } from '@/utils/useApiDataQuery'
 
@@ -28,13 +32,14 @@ export const useCurrentUserAuthorities = () => {
     const isSuperuser = authorities.has(AUTHORITY_ALL)
     const canAddUserRoles =
         isSuperuser ||
-        authorities.has('F_USERROLE_PRIVATE_ADD') ||
-        authorities.has('F_USERROLE_PUBLIC_ADD')
+        USERROLE_ADD_AUTHORITIES.some((authority) => authorities.has(authority))
+    const canViewUsers = isSuperuser || authorities.has(AUTHORITY_USER_VIEW)
 
     return {
         authorities,
         isSuperuser,
         canAddUserRoles,
+        canViewUsers,
         isLoading,
         error,
     }

@@ -13,11 +13,14 @@ export const SidenavItems = ({ children }: PropsWithChildren) => (
     <ul className={styles.sidenavItems}>{children}</ul>
 )
 
+export const SidenavHeading = ({ children }: PropsWithChildren) => (
+    <li className={styles.sidenavHeading}>{children}</li>
+)
+
 interface SidenavLinkProps {
     to: string
     label: string
     end?: boolean
-    disabled?: boolean
     LinkComponent?: React.ComponentType<{
         to: string
         end?: boolean
@@ -29,14 +32,9 @@ export const SidenavLink = ({
     to,
     label,
     end,
-    disabled,
     LinkComponent,
 }: SidenavLinkProps) => (
-    <li
-        className={cx(styles.sidenavLink, {
-            [styles.sidenavLinkDisabled]: disabled,
-        })}
-    >
+    <li className={styles.sidenavLink}>
         {LinkComponent ? (
             <LinkComponent to={to} end={end}>
                 {label}

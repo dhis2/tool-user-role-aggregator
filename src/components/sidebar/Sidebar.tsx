@@ -4,7 +4,8 @@ import cx from 'classnames'
 import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import styles from './Sidebar.module.css'
-import { Sidenav, SidenavItems, SidenavLink } from './sidenav'
+import { Sidenav, SidenavHeading, SidenavItems, SidenavLink } from './sidenav'
+import { useCurrentUserAuthorities } from '@/hooks/useCurrentUserAuthorities'
 
 type LinkItem = { to: string; label: string }
 
@@ -14,6 +15,7 @@ const SidebarNavLink = ({ to, label, end }: LinkItem & { end?: boolean }) => (
 
 export const Sidebar = ({ className }: { className?: string }) => {
     const [collapsed, setCollapsed] = useState(false)
+    const { canAddUserRoles, canViewUsers } = useCurrentUserAuthorities()
 
     return (
         <aside
@@ -23,15 +25,33 @@ export const Sidebar = ({ className }: { className?: string }) => {
         >
             <Sidenav>
                 <SidenavItems>
+                    <SidenavHeading>{i18n.t('Check access')}</SidenavHeading>
                     <SidebarNavLink
                         to="/"
-                        label={i18n.t('Create new role')}
+                        label={i18n.t('Role combination')}
                         end
                     />
-                    <SidebarNavLink
-                        to="/update"
-                        label={i18n.t('Update existing role')}
-                    />
+                    {canViewUsers && (
+                        <SidebarNavLink
+                            to="/check-user"
+                            label={i18n.t('Look up user')}
+                        />
+                    )}
+                    {canAddUserRoles && (
+                        <>
+                            <SidenavHeading>
+                                {i18n.t('Manage roles')}
+                            </SidenavHeading>
+                            <SidebarNavLink
+                                to="/create"
+                                label={i18n.t('Create new role')}
+                            />
+                            <SidebarNavLink
+                                to="/update"
+                                label={i18n.t('Update existing role')}
+                            />
+                        </>
+                    )}
                 </SidenavItems>
             </Sidenav>
             <button

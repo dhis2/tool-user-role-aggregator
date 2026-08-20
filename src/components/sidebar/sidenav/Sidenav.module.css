@@ -64,21 +64,19 @@ html {
     outline: none;
 }
 
-.sidenavLinkDisabled,
-.sidenavLinkDisabled a {
-    cursor: not-allowed;
-    color: var(--colors-grey500);
-}
-
-.sidenavLinkDisabled:hover,
-.sidenavLinkDisabled:hover > a {
-    background: var(--sidenav-dark-bg);
-}
-
 /* Active state — works with NavLink's .active class */
 .sidenavLink a.active,
 .sidenavLink :global(.active) {
     color: var(--colors-grey300);
     background: var(--sidenav-dark-bg-selected);
     box-shadow: inset 6px 0px 0px 0px var(--colors-teal400);
+}
+
+.sidenavHeading {
+    padding: var(--spacers-dp16) 8px 4px 12px;
+    color: var(--colors-grey500);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }

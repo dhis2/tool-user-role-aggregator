@@ -4,6 +4,13 @@ import React from 'react'
 import { createHashRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { PageWrapper } from '@/components/layout/PageWrapper'
+import { RequireAuthority } from '@/components/RequireAuthority'
+import {
+    AUTHORITY_USER_VIEW,
+    USERROLE_ADD_AUTHORITIES,
+} from '@/domain/userRole'
+import { CheckRolesPage } from '@/pages/CheckRolesPage'
+import { CheckUserPage } from '@/pages/CheckUserPage'
 import { CreateRolePage } from '@/pages/CreateRolePage'
 import { UpdateRolePage } from '@/pages/UpdateRolePage'
 import { SyncUrlWithGlobalShell } from '@/utils/SyncUrlWithGlobalShell'
@@ -24,8 +31,37 @@ const router = createHashRouter([
                             </PageWrapper>
                         ),
                         children: [
-                            { path: '/', element: <CreateRolePage /> },
-                            { path: '/update', element: <UpdateRolePage /> },
+                            { path: '/', element: <CheckRolesPage /> },
+                            {
+                                path: '/check-user',
+                                element: (
+                                    <RequireAuthority
+                                        anyOf={[AUTHORITY_USER_VIEW]}
+                                    >
+                                        <CheckUserPage />
+                                    </RequireAuthority>
+                                ),
+                            },
+                            {
+                                path: '/create',
+                                element: (
+                                    <RequireAuthority
+                                        anyOf={USERROLE_ADD_AUTHORITIES}
+                                    >
+                                        <CreateRolePage />
+                                    </RequireAuthority>
+                                ),
+                            },
+                            {
+                                path: '/update',
+                                element: (
+                                    <RequireAuthority
+                                        anyOf={USERROLE_ADD_AUTHORITIES}
+                                    >
+                                        <UpdateRolePage />
+                                    </RequireAuthority>
+                                ),
+                            },
                         ],
                     },
                 ],
